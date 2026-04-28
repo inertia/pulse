@@ -3,22 +3,17 @@ import SwiftUI
 enum CardFilter: String, CaseIterable, Identifiable {
     case all, todo, done
     var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .all: return "全部"
-        case .todo: return "待辦"
-        case .done: return "已完成"
-        }
-    }
 }
 
 struct PopoverContentView: View {
     @ObservedObject var scheduler: RefreshScheduler
     @ObservedObject var cardStore: CardStore
+    @ObservedObject var quickTodoStore: QuickTodoStore
     let sourceStore: SourceStore
     let onSettingsTap: () -> Void
 
-    @State private var filter: CardFilter = .all
+    @State private var selectedLabel: String?
+    @State private var showDone = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,7 +21,6 @@ struct PopoverContentView: View {
                 onSettings: onSettingsTap,
                 onRefresh: { Task { await scheduler.forceRefresh() } }
             )
-            FilterBar(filter: $filter)
             content
             PopoverFooterView(
                 stats: stats,
@@ -35,47 +29,135 @@ struct PopoverContentView: View {
             )
         }
         .frame(width: 400, height: 600)
+        .onAppear { ensureSelection() }
+        .onChange(of: groupLabels) { _, _ in ensureSelection() }
     }
 
     @ViewBuilder
     private var content: some View {
-        if scheduler.isLoading && cardStore.cards.isEmpty {
+        if scheduler.isLoading && cardStore.cards.isEmpty && quickTodoStore.todos.isEmpty {
             LoadingPlaceholderView(progress: scheduler.loadingProgress)
-        } else if cardStore.cards.isEmpty {
+        } else if grouped.isEmpty {
             EmptyStateView(onSettingsTap: onSettingsTap)
+            QuickTodoComposer(store: quickTodoStore)
         } else {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(grouped) { group in
-                        ProjectGroupView(group: group, onCardTap: { card in
-                            if let source = group.sources.first(where: { $0.id == card.sourceId }) {
-                                OpenSourceRef.open(card: card, source: source)
-                            }
-                        })
-                    }
-                }
-                .padding(.vertical, 8)
+            VStack(spacing: 0) {
+                ProjectTabBar(groups: grouped, selectedLabel: $selectedLabel)
+                Divider()
+                    .opacity(0.3)
+                projectBody
+                QuickTodoComposer(store: quickTodoStore)
             }
         }
     }
 
+    @ViewBuilder
+    private var projectBody: some View {
+        if let group = selectedGroup {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 6) {
+                    let todos = group.cards.filter { $0.status == .todo }
+                    let dones = group.cards.filter { $0.status == .done }
+
+                    if todos.isEmpty {
+                        Text("沒有待辦")
+                            .font(.callout)
+                            .foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 24)
+                    } else {
+                        ForEach(todos) { card in
+                            CardRowView(card: card, onTap: { tap(card, in: group) })
+                        }
+                    }
+
+                    if !dones.isEmpty {
+                        Divider().padding(.vertical, 4)
+                        DisclosureGroup(isExpanded: $showDone) {
+                            VStack(spacing: 6) {
+                                ForEach(dones.prefix(20)) { card in
+                                    CardRowView(card: card, onTap: { tap(card, in: group) })
+                                }
+                            }
+                            .padding(.top, 4)
+                        } label: {
+                            Text("已完成 (\(dones.count))")
+                                .font(.system(.caption, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+            }
+        } else {
+            EmptyView()
+        }
+    }
+
+    private func tap(_ card: Card, in group: ProjectGroup) {
+        // Quick todos: toggle on tap (no source open).
+        if card.sourceId == QuickTodoConstants.sourceId {
+            if let uuid = UUID(uuidString: card.id) {
+                quickTodoStore.toggle(uuid)
+            }
+            return
+        }
+        if let source = group.sources.first(where: { $0.id == card.sourceId }) {
+            OpenSourceRef.open(card: card, source: source)
+        }
+    }
+
+    // MARK: - Group / stat composition
+
     private var grouped: [ProjectGroup] {
         Self.computeGroups(
-            cards: cardStore.cards,
+            cards: cardStore.cards + quickTodoStore.cards(),
             sources: sourceStore.load(),
-            filter: filter
+            filter: .all
         )
     }
 
+    private var groupLabels: [String] { grouped.map { $0.label } }
+
+    private var selectedGroup: ProjectGroup? {
+        if let label = selectedLabel,
+           let g = grouped.first(where: { $0.label == label }) { return g }
+        return grouped.first
+    }
+
     private var stats: PopoverStats {
-        Self.computeStats(cards: cardStore.cards, sources: sourceStore.load())
+        Self.computeStats(
+            cards: cardStore.cards + quickTodoStore.cards(),
+            sources: sourceStore.load()
+        )
+    }
+
+    private func ensureSelection() {
+        if let label = selectedLabel, grouped.contains(where: { $0.label == label }) {
+            return
+        }
+        // pick the project with the most TODOs, or first available
+        let bestLabel = grouped
+            .max(by: {
+                $0.cards.filter { $0.status == .todo }.count <
+                $1.cards.filter { $0.status == .todo }.count
+            })?.label
+            ?? grouped.first?.label
+        selectedLabel = bestLabel
     }
 }
 
 extension PopoverContentView {
-    /// Filter + group cards. Sorts: todo first, then done by completedAt desc; groups by source label, sorted alphabetically.
+    /// Group cards by label (project / quick), with todos first then dones-by-completedAt-desc within each group.
+    /// QuickTodo virtual project (label "📝 快速記") is forced to first position.
     static func computeGroups(cards: [Card], sources: [Source], filter: CardFilter) -> [ProjectGroup] {
-        let labelById = Dictionary(uniqueKeysWithValues: sources.map { ($0.id, $0.label) })
+        let labelById: [UUID: String] = {
+            var dict = Dictionary(uniqueKeysWithValues: sources.map { ($0.id, $0.label) })
+            dict[QuickTodoConstants.sourceId] = QuickTodoConstants.label
+            return dict
+        }()
 
         let filtered = cards.filter { card in
             switch filter {
@@ -89,21 +171,27 @@ extension PopoverContentView {
             labelById[card.sourceId] ?? "Unknown"
         }
 
-        return byLabel
-            .map { (label, cards) in
-                let sorted = cards.sorted { lhs, rhs in
-                    if lhs.status != rhs.status { return lhs.status == .todo }
-                    return (lhs.completedAt ?? .distantPast) > (rhs.completedAt ?? .distantPast)
-                }
-                let groupSources = sources.filter { labelById[$0.id] == label }
-                return ProjectGroup(label: label, sources: groupSources, cards: sorted)
+        let groups = byLabel.map { (label, cards) -> ProjectGroup in
+            let sorted = cards.sorted { lhs, rhs in
+                if lhs.status != rhs.status { return lhs.status == .todo }
+                return (lhs.completedAt ?? .distantPast) > (rhs.completedAt ?? .distantPast)
             }
-            .sorted { $0.label < $1.label }
+            let groupSources = sources.filter { labelById[$0.id] == label }
+            return ProjectGroup(label: label, sources: groupSources, cards: sorted)
+        }
+
+        return groups.sorted { lhs, rhs in
+            // Pin Quick to first.
+            if lhs.label == QuickTodoConstants.label { return true }
+            if rhs.label == QuickTodoConstants.label { return false }
+            return lhs.label < rhs.label
+        }
     }
 
-    /// Compute stats: distinct project labels (cards with known source), total todos, total dones.
+    /// Stats: distinct project labels (cards with known source/quick), total todos, total dones.
     static func computeStats(cards: [Card], sources: [Source]) -> PopoverStats {
-        let labelById = Dictionary(uniqueKeysWithValues: sources.map { ($0.id, $0.label) })
+        var labelById = Dictionary(uniqueKeysWithValues: sources.map { ($0.id, $0.label) })
+        labelById[QuickTodoConstants.sourceId] = QuickTodoConstants.label
         let labels = Set(cards.compactMap { labelById[$0.sourceId] })
         return PopoverStats(
             projects: labels.count,

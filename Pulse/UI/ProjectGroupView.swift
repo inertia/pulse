@@ -5,28 +5,40 @@ struct ProjectGroupView: View {
     let onCardTap: (Card) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                Text("📄")
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
                 Text(group.label)
-                    .font(.system(.subheadline).weight(.medium))
+                    .font(.system(.caption, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                Text("\(group.cards.count)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Color.primary.opacity(0.06)))
                 if isMissing {
-                    Text("⚠")
+                    Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
-                    Text("來源遺失")
                         .font(.caption)
+                    Text("來源遺失")
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 14)
+            .padding(.top, 6)
 
-            ForEach(group.cards) { card in
-                CardRowView(card: card, onTap: { onCardTap(card) })
+            VStack(spacing: 6) {
+                ForEach(group.cards) { card in
+                    CardRowView(card: card, onTap: { onCardTap(card) })
+                }
             }
+            .padding(.horizontal, 12)
             .opacity(isMissing ? 0.5 : 1.0)
         }
+        .padding(.bottom, 8)
     }
 
     /// Group is "missing" if any of its enabled markdown sources point to non-existent paths,

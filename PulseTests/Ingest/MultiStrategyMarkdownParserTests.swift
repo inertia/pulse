@@ -63,7 +63,15 @@ final class MultiStrategyMarkdownParserTests: XCTestCase {
     // MARK: - 2. Heterotopias fixture integration
 
     func testHeterotopiasFixtureIntegration() throws {
-        let parser = MultiStrategyMarkdownParser()
+        // Use full strategy set including NumberedSectionStrategy (opt-in) for this fixture
+        // since it has URGENT / HIGH / MEDIUM numbered todos. Default parser (without
+        // NumberedSectionStrategy) is exercised by testHeterotopiasFixtureWithDefaultStrategies.
+        let parser = MultiStrategyMarkdownParser(strategies: [
+            CheckboxStrategy(),
+            EmojiCheckmarkStrategy(),
+            NumberedSectionStrategy(),
+            SectionHeadingStrategy(),
+        ])
         let cards = try parser.parse(filePath: Self.fixturePath("heterotopias-sample.md"), sourceId: UUID())
 
         XCTAssertGreaterThan(cards.count, 5, "fixture should yield more than 5 cards")
@@ -83,6 +91,18 @@ final class MultiStrategyMarkdownParserTests: XCTestCase {
         for card in cards {
             XCTAssertTrue(card.sourceRef.contains("heterotopias-sample.md:"), "sourceRef must include filename:lineNumber")
         }
+    }
+
+    /// v0.1 default strategies exclude NumberedSectionStrategy because URGENT/HIGH/MEDIUM
+    /// triggered too many false positives in real CLAUDE.md files. This test asserts
+    /// the default parser still picks up Recently Done ✅ items but not the numbered todos.
+    func testHeterotopiasFixtureWithDefaultStrategies() throws {
+        let parser = MultiStrategyMarkdownParser()  // defaults
+        let cards = try parser.parse(filePath: Self.fixturePath("heterotopias-sample.md"), sourceId: UUID())
+
+        let dones = cards.filter { $0.status == .done }
+        XCTAssertGreaterThanOrEqual(dones.count, 5, "Recently Done ✅ items still picked up")
+        // No numbered todos because NumberedSectionStrategy not in defaults.
     }
 
     // MARK: - 3. Cross-strategy dedup

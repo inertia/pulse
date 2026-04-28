@@ -63,12 +63,14 @@ final class RefreshScheduler: ObservableObject {
             loadingProgress = (done, sources.count)
         }
         lastRefreshAt = Date()
+        try? cardStore.save()
     }
 
     /// Refresh a single source (used by FSEvents trigger in Task 24).
     func refresh(_ source: Source) async {
         let enabledTypes = settings.gitFilterPreset.enabledTypes   // snapshot on main
         await refresh(source, enabledTypes: enabledTypes)
+        try? cardStore.save()
     }
 
     /// Internal helper that takes the enabledTypes snapshot.
@@ -88,7 +90,6 @@ final class RefreshScheduler: ObservableObject {
         } catch {
             // Per spec §7: missing path / failed git log = source shows missing,
             // but DON'T crash the scheduler. Leave existing cached cards alone.
-            // (We could log here in future; v0.1 silently skips.)
         }
     }
 }

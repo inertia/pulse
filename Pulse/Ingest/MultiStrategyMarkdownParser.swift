@@ -15,11 +15,14 @@ final class MultiStrategyMarkdownParser {
         self.strategies = strategies
     }
 
+    /// v0.1 defaults: tight match only. NumberedSectionStrategy excluded because
+    /// it triggers on `### URGENT` / `### HIGH` etc which are often "structured
+    /// priority lists" rather than actionable todos and produce noise. Users
+    /// who want it can construct the parser explicitly with that strategy.
     static var defaultStrategies: [MarkdownStrategy] {
         [
             CheckboxStrategy(),
             EmojiCheckmarkStrategy(),
-            NumberedSectionStrategy(),
             SectionHeadingStrategy()
         ]
     }
