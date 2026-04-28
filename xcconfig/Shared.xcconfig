@@ -3,3 +3,4 @@ SWIFT_VERSION = 5.9
 ARCHS = arm64 x86_64
 ENABLE_USER_SCRIPT_SANDBOXING = NO
 GENERATE_INFOPLIST_FILE = YES
+INFOPLIST_KEY_NSDesktopFolderUsageDescription = Pulse 讀取你 Desktop 中的 CLAUDE.md / AGENTS.md / GEMINI.md 跟 git 紀錄，呈現跨專案 todo 與已完成。只讀，不寫回。

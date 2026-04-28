@@ -19,14 +19,18 @@ struct GitLogRunner {
         candidatePaths.first { fileManager.isExecutableFile(atPath: $0) }
     }
 
-    /// Run `git -C <dir> log --pretty=%H%x09%aI%x09%s%x09%b%x1e -n <limit>` and return stdout.
-    static func run(at dir: URL, limit: Int = 100) throws -> String {
+    /// Default time window for git log. Reduces "old commits as fake todos" noise.
+    static let defaultSinceDays = 14
+
+    /// Run `git -C <dir> log --pretty=%H%x09%aI%x09%s%x09%b%x1e --since=<days> ago -n <limit>` and return stdout.
+    static func run(at dir: URL, limit: Int = 50, sinceDays: Int = defaultSinceDays) throws -> String {
         guard let gitPath = resolveGitPath() else { throw GitLogError.gitNotFound }
         let p = Process()
         p.executableURL = URL(fileURLWithPath: gitPath)
         p.arguments = [
             "-C", dir.path, "log",
             "--pretty=%H%x09%aI%x09%s%x09%b%x1e",
+            "--since=\(sinceDays) days ago",
             "-n", String(limit)
         ]
         let outPipe = Pipe()

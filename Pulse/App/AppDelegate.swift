@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var cardStore: CardStore?
     private var sourceStore: SourceStore?
     private var settings: Pulse.Settings?
+    private var quickTodoStore: QuickTodoStore?
     private var onboardingController: OnboardingWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -16,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let sourceStore = SourceStore()
         let cardStore = CardStore()
         let settings = Pulse.Settings()
+        let quickTodoStore = QuickTodoStore()
+        quickTodoStore.load()
         let scheduler = RefreshScheduler(
             sourceStore: sourceStore,
             cardStore: cardStore,
@@ -25,12 +28,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.sourceStore = sourceStore
         self.cardStore = cardStore
         self.settings = settings
+        self.quickTodoStore = quickTodoStore
         self.scheduler = scheduler
 
         let rootView = AnyView(
             PopoverContentView(
                 scheduler: scheduler,
                 cardStore: cardStore,
+                quickTodoStore: quickTodoStore,
                 sourceStore: sourceStore,
                 onSettingsTap: { [weak self] in
                     self?.openSettings()
