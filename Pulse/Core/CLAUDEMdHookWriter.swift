@@ -13,13 +13,37 @@ enum CLAUDEMdHookWriter {
     static let endMarker = "<!-- pulse-hook:end -->"
 
     /// Generate the hook block content (markers included).
+    /// Tells Claude Code session: read pulse.md, and auto-record certain user
+    /// utterances as todos (trigger phrase semantic match).
     static func hookBlock() -> String {
         """
         \(startMarker)
-        📋 **此專案的工作清單與 commit 紀錄統一在 [`pulse.md`](./pulse.md)。**
+        📋 **此專案的工作清單在 [`pulse.md`](./pulse.md)。**
 
-        每次 session 開始時請先讀 `pulse.md` 看現在做什麼、剛做完什麼。
-        Pulse menubar app 會自動寫入；user 可隨時編輯。
+        **Session 開始**：先讀 pulse.md 看 outstanding todos。
+
+        **自動加 todo 規則**：user 講以下類型語句時，append 到 pulse.md `## To Do` 段：
+
+        觸發語句：
+        - 「加 todo」/「加待辦」/「加進清單」/「加上 X」
+        - 「優先處理 X」/「要先做 X」/「P0」/「緊急」
+        - 「下次要做 X」/「下一輪」/「下一步」
+        - 「記下來」/「不要忘記」/「記得處理」
+        - "add todo X" / "TODO: X" / "make X a priority"
+
+        格式：在 `## To Do` 段尾 append：
+        - 普通：`- [ ] (YYYY-MM-DD) {內容}`
+        - 緊急 / P0：`- [ ] 🔴 (YYYY-MM-DD) {內容}`
+        - 高優先：`- [ ] 🟡 (YYYY-MM-DD) {內容}`
+
+        寫完一句確認：「已記 pulse.md：[xxx]」
+
+        **不要寫**：
+        - 已完成（git commit log 涵蓋）
+        - brainstorm 中、未拍板要做
+        - session-only 步驟（用 TodoWrite tool）
+
+        Pulse menubar app 自動讀 pulse.md 顯示在系統工具列。
         \(endMarker)
         """
     }
