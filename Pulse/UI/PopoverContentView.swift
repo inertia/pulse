@@ -47,9 +47,10 @@ struct PopoverContentView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(grouped) { group in
-                        // Task 26 will replace this placeholder with ProjectGroupView.
-                        Text("\(group.label) — \(group.cards.count) cards")
-                            .padding(.horizontal, 12)
+                        ProjectGroupView(group: group, onCardTap: { card in
+                            // Task 27 will wire openSourceRef here. v0.1 placeholder:
+                            print("Card tapped: \(card.title)")
+                        })
                     }
                 }
                 .padding(.vertical, 8)
