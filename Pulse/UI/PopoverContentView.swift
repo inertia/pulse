@@ -39,15 +39,68 @@ struct PopoverContentView: View {
             LoadingPlaceholderView(progress: scheduler.loadingProgress)
         } else if grouped.isEmpty {
             EmptyStateView(onSettingsTap: onSettingsTap)
-            QuickTodoComposer(store: quickTodoStore)
+            composer
         } else {
             VStack(spacing: 0) {
                 ProjectTabBar(groups: grouped, selectedLabel: $selectedLabel)
-                Divider()
-                    .opacity(0.3)
+                Divider().opacity(0.3)
                 projectBody
-                QuickTodoComposer(store: quickTodoStore)
+                composer
             }
+        }
+    }
+
+    private var composer: some View {
+        QuickTodoComposer(
+            store: quickTodoStore,
+            projects: projectTargets,
+            onProjectWrite: handleProjectWrite
+        )
+    }
+
+    /// Distinct project targets for quick-write (one per project label that has at least one source).
+    /// Project dir is the parent dir of any markdown source; for git-only projects the dir itself.
+    private var projectTargets: [QuickTodoComposer.ProjectTarget] {
+        let sources = sourceStore.load()
+        var seen = Set<String>()
+        var out: [QuickTodoComposer.ProjectTarget] = []
+        for source in sources where source.enabled {
+            if seen.contains(source.label) { continue }
+            let dir: URL
+            switch source.kind {
+            case .gitLog:
+                dir = source.path                          // git source path is repo dir
+            case .claudeMd, .agentsMd, .geminiMd:
+                dir = source.path.deletingLastPathComponent()  // markdown is file inside dir
+            }
+            out.append(.init(label: source.label, projectDir: dir))
+            seen.insert(source.label)
+        }
+        return out
+    }
+
+    /// After PulseQuickWriter writes to a project's PULSE_QUICK.md, register it
+    /// as a source if not already, and trigger refresh so it appears in popover.
+    private func handleProjectWrite(_ url: URL) {
+        var sources = sourceStore.load()
+        let projectDir = url.deletingLastPathComponent()
+        let label = sources.first(where: {
+            ($0.kind == .gitLog && $0.path == projectDir)
+                || $0.path.deletingLastPathComponent() == projectDir
+        })?.label ?? projectDir.lastPathComponent
+
+        if !sources.contains(where: { $0.path == url }) {
+            let new = Source(kind: .claudeMd, path: url, label: label, enabled: true)
+            sources.append(new)
+            try? sourceStore.save(sources)
+        }
+        Task {
+            if let s = sources.first(where: { $0.path == url }) {
+                await scheduler.refresh(s)
+            } else {
+                await scheduler.forceRefresh()
+            }
+            selectedLabel = label    // jump to that project's tab
         }
     }
 
