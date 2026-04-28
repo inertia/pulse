@@ -1,6 +1,6 @@
-# Handoff · last updated 2026-04-28
+# Handoff · last updated 2026-04-28 (post-Q1)
 
-> 換 session 時讀這檔。Pulse v0.1 已 ship 但仍在迭代；下一輪要做 Q1 done 機制 + Q3 英文公開版。
+> 換 session 時讀這檔。Pulse v0.1 已 ship；Q1 done 機制 2026-04-28 完工 + e2e 驗過；下一輪做 Q3 英文公開版。
 
 ---
 
@@ -51,20 +51,25 @@
 - `INFOPLIST_KEY_NSDesktopFolderUsageDescription` 在 Shared.xcconfig（TCC scope 只 Desktop）
 - `Scripts/build-dmg.sh` / `Scripts/release.sh` / `Scripts/verify-readonly.sh`
 
-### Tests：179/179 PASS
+### Tests：186/186 PASS（179 baseline + 7 PulseFileMaintenanceTests）
 
 ---
 
 ## 還沒做的（user 拍板，下 session 開工）
 
-### Q1: pulse.md 已完成事項處理機制 — **下次 session 第一件事**
+### Q1: pulse.md 已完成事項處理機制 — **完工 2026-04-28**（commits f6b69b3 / 2624d1e / 5dcb462 / 5fbfe35）
 
-要做：
-1. **擴 hook trigger phrases**（在 `CLAUDEMdHookWriter.hookBlock()` 跟 8 個現存 CLAUDE.md），多加 done trigger：
-   - 「X 完成」/「X 做完了」/「X 結了」→ Claude Code 把 pulse.md 對應 `- [ ]` 改 `- [x]`
-   - 「幫我刪掉 X」/「不要這條 X」→ 整行 remove（user 拍板：完成或刪除二擇一）
-2. **加 Pulse archive 邏輯**：`RefreshScheduler` 每次 refresh 額外掃所有 pulse.md 檔，把 `- [x]` 且日期 > 30 天前的項目搬到 `## Archive` 段（保留歷史）— **這個 user 還沒最後拍板「Archive 段」vs「直接刪」**
-3. 同步用 Python regex 更新 8 個現存 CLAUDE.md hook block（沿用 b47f06a 那次的更新模式）
+實際做的（user 拍板「直接刪除」、不做 Archive 段）：
+1. ✅ `CLAUDEMdHookWriter.hookBlock()` 加完成 / 刪除規則段：
+   - 完成觸發 → `- [x] (done YYYY-MM-DD) {原內容}`
+   - 刪除觸發 → 整行 remove
+2. ✅ 新檔 `Pulse/Core/PulseFileMaintenance.swift`：`cleanLines` (純 helper) + `cleanAgedDoneItems` (file IO)；regex `^- \[x\] \(done (\d{4}-\d{2}-\d{2})\)`，date > 30 天 → 整行刪除；malformed date / 無 marker 的 `- [x]` 不動
+3. ✅ `RefreshScheduler.forceRefresh()` 尾端 wire-in：filter `path.lastPathComponent == "pulse.md"` 後跑 maintenance
+4. ✅ `Scripts/update_existing_hooks.py`：sync 8 個現存 CLAUDE.md hook block；NEW_BLOCK 與 Swift `hookBlock()` byte-for-byte 一致（一次性 diff 驗過）
+5. ✅ `PulseTests/Core/PulseFileMaintenanceTests.swift`：8 個 cases，179 → 186 tests green
+6. ✅ E2E 驗：md-editor pulse.md 寫 38 天前 fixture line → build Release-Internal → install /Applications → launch → forceRefresh on launch 跑掉 fixture line（備份還原 OK）
+
+下次擴 hook 內容的工作流：改 Swift `hookBlock()` → 把新 body 複製進 `Scripts/update_existing_hooks.py` 的 NEW_BLOCK → `python3 Scripts/update_existing_hooks.py`。
 
 git log 不動：仍每次讀 git，commit 顯示為 done card 在 popover「已完成 (N) ▼」disclosure。pulse.md `- [x]` 跟 git commit done 並列顯示。
 
@@ -74,7 +79,7 @@ git log 不動：仍每次讀 git，commit 顯示為 done card 在 popover「已
 
 `+ 快速記` 展開 → 選某專案 → 寫進 `<project>/pulse.md` `## To Do` 段。「📝 只記在 Pulse」= 存 `quick-todos.json`（跨專案 / 雜事）。
 
-### Q3: 公開版英文化 — Q1 之後做
+### Q3: 公開版英文化 — **下次 session 第一件事**
 
 User 拍板：不做 runtime locale 切換，直接 `#if INTERNAL_BUILD` 切兩套字串：
 - 個人版（Internal）：中文 hardcoded（現狀不動）
@@ -197,6 +202,11 @@ open "/Applications/Pulse Internal.app"
 ## 重要 commit 序（讀 history 用）
 
 ```
+5fbfe35 chore(hooks): one-shot script to sync existing CLAUDE.md hook blocks
+5dcb462 test(maintenance): unit cover cleanLines + cleanAgedDoneItems
+2624d1e feat(maintenance): sweep aged `- [x] (done ...)` lines from pulse.md on refresh
+f6b69b3 feat(hook): add done/delete trigger phrases to CLAUDE.md hook block
+8c766a3 docs: handoff for next session — Q1 done mechanism + Q3 English public version
 b47f06a feat(hook): expanded CLAUDE.md hook with trigger-phrase rules
 67b17e8 chore(ingest): git log cutoff 14 → 30 days per user
 46acd02 feat(detect): pulse.md added to auto-detection convention; 9-project bootstrap done
@@ -215,14 +225,12 @@ a58971b fix(ui): Applications symlink + Quit button (⌘Q)
 
 ## 下個 session 第一個動作
 
-讀完此檔。先做 Q1 done 機制（半小時）：
+讀完此檔。直接做 Q3 英文公開版（1-2 hr，工作量散在 30-50 條 string）：
 
-1. 擴 `CLAUDEMdHookWriter.hookBlock()` 加 done / delete trigger phrases：
-   - 「X 完成」/「X 做完了」/「X 結了」→ `- [ ]` 改 `- [x]`
-   - 「幫我刪掉 X」/「不要這條 X」→ 整行 remove
-2. 用 Python regex 同步更新 8 個現存 CLAUDE.md hook block（pattern 跟 b47f06a 那次一樣）
-3. **問 user 拍板**：完成 30 天前的 `- [x]` 要「搬到 ## Archive 段」還是「直接刪」？
-4. 加 archive / cleanup 邏輯到 `RefreshScheduler` 或專屬 `PulseFileMaintenance.swift`
-5. Tests + build dmg + commit
-
-完成 Q1 後做 Q3 英文公開版字串（1-2 小時，工作量散在 30-50 條 string）。
+1. 建 `Pulse/Resources/Strings.swift`，集中所有 user-facing 字串（enum L 帶 `#if INTERNAL_BUILD` 切兩套）
+2. `grep -rn '"[\x{4e00}-\x{9fff}]"' Pulse/UI/` 列出所有中文字面量，逐個搬到 `L.xxx`
+3. 確認 `Pulse-Internal.xcconfig` 的 `SWIFT_ACTIVE_COMPILATION_CONDITIONS` 含 `INTERNAL_BUILD`
+4. 預期動到的檔案：`PopoverContentView` / `PopoverHeaderView` / `PopoverFooterView` / `ProjectTabBar` / `QuickTodoComposer` / `OnboardingView` / `Settings/{SettingsView, SourcesTab, FiltersTab, AboutTab}` / `EmptyStateView` / `LoadingPlaceholderView`
+5. **不動的字串**：`CLAUDEMdHookWriter.hookBlock()` 永遠中文（hook 內容是給該專案 Claude Code session 讀，不是 app UI；公開版下載者用自己的 LLM/語言）
+6. Build internal + public 兩個 dmg 驗：internal 中文不變，public 全英文
+7. Commits: `feat(i18n): centralize strings in L enum` → `feat(i18n): English strings for public via #if INTERNAL_BUILD`
