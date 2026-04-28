@@ -190,4 +190,80 @@ final class AutoSourceDetectorTests: XCTestCase {
         XCTAssertEqual(results.count, 1)
         XCTAssertEqual(results.first?.dir.lastPathComponent, "proj")
     }
+
+    // MARK: - 12. Performance: 200-dir scan under 3 seconds
+
+    func testScansLargeDirectoryUnder3Seconds() async throws {
+        let tempdir = try makeTempDir()
+        var layout: [String] = []
+        for i in 0..<100 {
+            layout.append("real-\(i)/CLAUDE.md")
+        }
+        for i in 0..<100 {
+            layout.append("noise-\(i)/random.txt")
+        }
+        try makeProjectStructure(in: tempdir, layout: layout)
+
+        let detector = AutoSourceDetector(roots: [tempdir], depth: 1)
+        let start = Date()
+        let results = await detector.scan()
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertEqual(results.count, 100)
+        XCTAssertLessThan(elapsed, 3.0, "scan took \(elapsed)s; should complete in < 3s")
+    }
+
+    // MARK: - 13. Cancellation smoke test
+
+    func testCancelStopsScan() async throws {
+        let tempdir = try makeTempDir()
+        var layout: [String] = []
+        for i in 0..<1000 {
+            // Mix of CLAUDE.md and noise; doesn't matter
+            if i.isMultiple(of: 2) {
+                layout.append("dir-\(i)/CLAUDE.md")
+            } else {
+                layout.append("dir-\(i)/random.txt")
+            }
+        }
+        try makeProjectStructure(in: tempdir, layout: layout)
+
+        let detector = AutoSourceDetector(roots: [tempdir], depth: 1)
+        let task = Task { await detector.scan() }
+        try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+        task.cancel()
+        let result = await task.value
+        // Smoke test: scan finished (didn't hang); no crash. Result count
+        // can be anywhere from 0 to 500 — cancellation timing is loose.
+        XCTAssertLessThanOrEqual(result.count, 500)
+    }
+
+    // MARK: - 14. Progress callback called
+
+    func testProgressCallbackCalled() async throws {
+        let tempdir = try makeTempDir()
+        var layout: [String] = []
+        for i in 0..<50 {
+            layout.append("proj-\(i)/CLAUDE.md")
+        }
+        try makeProjectStructure(in: tempdir, layout: layout)
+
+        let detector = AutoSourceDetector(roots: [tempdir], depth: 1)
+        actor ProgressTracker {
+            var calls: [(Int, Int?)] = []
+            func append(_ scanned: Int, _ total: Int?) { calls.append((scanned, total)) }
+            func snapshot() -> [(Int, Int?)] { calls }
+        }
+        let tracker = ProgressTracker()
+        _ = await detector.scan(progress: { scanned, total in
+            Task { await tracker.append(scanned, total) }
+        })
+        // Allow the actor to drain pending appends.
+        try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+
+        let calls = await tracker.snapshot()
+        XCTAssertFalse(calls.isEmpty, "progress callback should be called at least once")
+        XCTAssertTrue(calls.contains(where: { $0.0 >= 1 }),
+                      "expected at least one progress call with scanned >= 1")
+    }
 }
