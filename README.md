@@ -19,9 +19,33 @@ Pulse 自動讀取你各個專案裡的 `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` 
 
 螢幕截圖補上 / Screenshots coming with v0.1.0 release.
 
+## 使用方式
+
+第一次啟動：
+
+1. **公開版**：onboarding 視窗會掃描 ~/Desktop / ~/Projects / ~/code / ~/Developer / ~/Documents，列出含 `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` 的目錄；勾選要追蹤的專案後完成。
+2. **個人版**（INTERNAL_BUILD）：預載 9 個進行中的專案，啟動立即顯示，無 onboarding。
+
+日常使用：
+
+- **點工具列 icon**：彈出 popover，看跨專案的 todo / done 卡片
+- **⌘,**：開設定面板（Sources / Filters / About 三個 tabs）
+  - Sources：增刪 source 路徑
+  - Filters：切換 git commit preset（Minimal / Recommended / All）
+  - About：版本資訊
+- **自動 refresh**：markdown source 透過 FSEventStream 即時更新（1 秒 debounce）；git log 每 5 分鐘保底掃一次
+
 ## 系統需求
 
 macOS 14 (Sonoma) 以上。
+
+驗證 G7 唯讀（選用）需要 `jq`：`brew install jq`，然後執行 `./Scripts/verify-readonly.sh`。
+
+## 貢獻 / 反饋
+
+Bug、建議、功能請求歡迎開 issue：https://github.com/inertia/pulse/issues
+
+PR 歡迎，請先在 issue 討論方向避免重工。
 
 ## License
 
