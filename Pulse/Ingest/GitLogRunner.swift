@@ -19,8 +19,9 @@ struct GitLogRunner {
         candidatePaths.first { fileManager.isExecutableFile(atPath: $0) }
     }
 
-    /// Default time window for git log. Reduces "old commits as fake todos" noise.
-    static let defaultSinceDays = 14
+    /// Default time window for git log. User picked 30 days (2026-04-28) to keep
+    /// monthly retro view; older commits dropped to reduce noise.
+    static let defaultSinceDays = 30
 
     /// Run `git -C <dir> log --pretty=%H%x09%aI%x09%s%x09%b%x1e --since=<days> ago -n <limit>` and return stdout.
     static func run(at dir: URL, limit: Int = 50, sinceDays: Int = defaultSinceDays) throws -> String {
