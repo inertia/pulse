@@ -47,13 +47,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Returning user: start scheduler
             Task { await scheduler.start() }
         } else {
-            // First-run public build: show onboarding.
-            // (Internal build will short-circuit this in Task 33.)
-            #if !INTERNAL_BUILD
-            showOnboarding()
-            #else
-            // Internal build first-run path: filled in by Task 33.
+            #if INTERNAL_BUILD
+            // Internal build first-run: preload 9 personal projects
+            let preloaded = HuangSunQuanProjects.materialize()
+            try? sourceStore.save(preloaded)
+            settings.firstRunCompleted = true
             Task { await scheduler.start() }
+            #else
+            // First-run public build: show onboarding.
+            showOnboarding()
             #endif
         }
     }
