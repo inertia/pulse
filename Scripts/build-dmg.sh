@@ -29,7 +29,7 @@ build_one() {
     CODE_SIGNING_ALLOWED=NO \
     clean build
 
-  cp -R "build/dd-${kind}/Build/Products/${config}/Pulse.app" "build/staging-${kind}/"
+  cp -R "build/dd-${kind}/Build/Products/${config}/"*.app "build/staging-${kind}/"
   ln -s /Applications "build/staging-${kind}/Applications"
 
   hdiutil create -volname "Pulse ${VERSION}" \
