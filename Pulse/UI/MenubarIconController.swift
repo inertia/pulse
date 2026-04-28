@@ -15,11 +15,17 @@ final class MenubarIconController {
         popover.contentViewController = NSHostingController(rootView: rootView)
 
         if let button = statusItem.button {
-            let image = NSImage(named: "MenuBarIcon")
-                ?? NSImage(systemSymbolName: "waveform.path.ecg",
-                           accessibilityDescription: "Pulse")
-            image?.isTemplate = true   // 自動配深淺色 menubar
-            button.image = image
+            if let image = NSImage(named: "MenuBarIcon") {
+                // 非 template — 保留紅點顏色；trade-off：dark menubar 上 P 會偏暗
+                image.isTemplate = false
+                button.image = image
+            } else {
+                // fallback：asset 漏掉時用 SF Symbol（template 自動配色）
+                let symbol = NSImage(systemSymbolName: "waveform.path.ecg",
+                                     accessibilityDescription: "Pulse")
+                symbol?.isTemplate = true
+                button.image = symbol
+            }
             button.target = self
             button.action = #selector(togglePopover)
         }
