@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## v0.2.0：todo lifecycle 補完 (2026-04-28)
+
+### 新增功能
+
+- **完整 todo 生命週期**（Q1）：CLAUDE.md hook 從只教「加 todo」擴成加 + 完成 + 刪除三段
+  - 完成觸發語：「X 完成」/「X 做完了」/「X 結了」/「done X」/「finished X」→ Claude Code 把 `- [ ]` 改 `- [x] (done YYYY-MM-DD)`
+  - 刪除觸發語：「幫我刪掉 X」/「不要這條 X」/「拿掉 X」/「remove X」/「drop X」→ 整行 remove
+- **自動清理過期完成項**：`PulseFileMaintenance` 每次 `RefreshScheduler.forceRefresh()` 尾端掃所有 pulse.md，把 `- [x] (done YYYY-MM-DD)` 且 date > 30 天的整行刪除（commit log 已涵蓋歷史）
+- **既有專案 hook 同步**：`Scripts/update_existing_hooks.py` 一次性同步 8 個個人專案 CLAUDE.md hook block；`ensureHook()` idempotent 不會自動推送內容更新，所以 hookBlock 改動後跑這 script
+
+### 技術重點
+
+- Test suite 179 → 186 green（PulseFileMaintenanceTests 7 cases：keeps non-marker / within window / removes past window / preserves structure / malformed date / trailing newline / writes only changed files）
+- E2E 驗：38 天前 fixture line 寫入 md-editor pulse.md → forceRefresh on launch 整行刪除確認
+
+### 升級備註
+
+- 個人版升級：launch 後 hook 內容自動套用既有 8 個 CLAUDE.md（v0.1 已 onboarding 過的）；`PulseFileMaintenance` 只清 `(done ...)` marker 的行，bootstrap 既有 `- [x]` 不動
+- 公開版升級：first-run user 走 onboarding 收到新 hook；既有 user 升級時 ensureHook idempotent 不蓋舊 hook，需要 user 自己跑 script 或刪 hook 段重新進 onboarding
+
+### 已知限制
+
+- 個人版 9 專案還是 hardcoded 在 `Internal.swift`，要改要重 build（v0.3 Q4 補 Settings 增刪專案）
+- 公開版 onboarding 後沒地方再重掃 Desktop（v0.3 Q4 補）
+- 公開版 UI 仍中文 hardcoded（v0.3 Q3 補英文 via `#if INTERNAL_BUILD`）
+
+---
+
 ## v0.1.0：首版 (2026-04-28)
 
 ### 新增功能
