@@ -23,7 +23,8 @@ enum HuangSunQuanProjects {
     #endif
 
     /// Materialize preloaded projects into Source rows.
-    /// Each project gets up to 4 sources (claudeMd / agentsMd / geminiMd / gitLog).
+    /// Each project gets up to 5 sources (claudeMd / agentsMd / geminiMd / pulse.md / gitLog).
+    /// pulse.md is the Pulse-managed convention (todos + commit log per project).
     /// Sources with no matching file (or no .git for gitLog) are added but `enabled: false`.
     static func materialize() -> [Source] {
         var sources: [Source] = []
@@ -32,7 +33,8 @@ enum HuangSunQuanProjects {
             let dir = URL(fileURLWithPath: project.path)
             for (filename, kind) in [("CLAUDE.md", SourceKind.claudeMd),
                                        ("AGENTS.md", SourceKind.agentsMd),
-                                       ("GEMINI.md", SourceKind.geminiMd)] {
+                                       ("GEMINI.md", SourceKind.geminiMd),
+                                       ("pulse.md", SourceKind.claudeMd)] {
                 let filePath = dir.appendingPathComponent(filename)
                 let exists = fm.fileExists(atPath: filePath.path)
                 sources.append(Source(kind: kind, path: filePath, label: project.label, enabled: exists))

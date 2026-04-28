@@ -34,7 +34,7 @@ struct AutoSourceDetector {
         "DerivedData", ".DS_Store", ".pytest_cache", ".tox",
     ]
     /// Filenames whose presence in a directory marks it as a "project".
-    static let detectedFilenames = ["CLAUDE.md", "AGENTS.md", "GEMINI.md"]
+    static let detectedFilenames = ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "pulse.md"]
 
     /// Progress callback signature: `(scanned, total)` where `scanned` is the
     /// running count of projects yielded so far, and `total` is the upfront

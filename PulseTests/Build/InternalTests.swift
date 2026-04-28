@@ -5,19 +5,19 @@ final class InternalTests: XCTestCase {
 
     // MARK: - materialize() shape
 
-    func testMaterializeProducesFourSourcesPerProject() {
+    func testMaterializeProducesFiveSourcesPerProject() {
         let sources = HuangSunQuanProjects.materialize()
-        let expected = HuangSunQuanProjects.list.count * 4
+        let expected = HuangSunQuanProjects.list.count * 5
         XCTAssertEqual(sources.count, expected,
-                       "materialize() should produce 4 sources per project (3 markdown + 1 gitLog)")
+                       "materialize() should produce 5 sources per project (CLAUDE/AGENTS/GEMINI/pulse markdown + 1 gitLog)")
     }
 
     func testMaterializeMarkdownSourcesPointToCorrectFilenames() {
         let sources = HuangSunQuanProjects.materialize()
 
         for (i, project) in HuangSunQuanProjects.list.enumerated() {
-            let base = i * 4
-            guard sources.count >= base + 4 else {
+            let base = i * 5
+            guard sources.count >= base + 5 else {
                 XCTFail("missing sources for project \(project.label)")
                 continue
             }
@@ -33,6 +33,10 @@ final class InternalTests: XCTestCase {
             XCTAssertEqual(sources[base + 2].kind, .geminiMd)
             XCTAssertEqual(sources[base + 2].path, dir.appendingPathComponent("GEMINI.md"))
             XCTAssertEqual(sources[base + 2].label, project.label)
+
+            XCTAssertEqual(sources[base + 3].kind, .claudeMd, "pulse.md uses claudeMd kind (markdown)")
+            XCTAssertEqual(sources[base + 3].path, dir.appendingPathComponent("pulse.md"))
+            XCTAssertEqual(sources[base + 3].label, project.label)
         }
     }
 
@@ -40,7 +44,7 @@ final class InternalTests: XCTestCase {
         let sources = HuangSunQuanProjects.materialize()
 
         for (i, project) in HuangSunQuanProjects.list.enumerated() {
-            let gitIndex = i * 4 + 3
+            let gitIndex = i * 5 + 4
             guard sources.count > gitIndex else {
                 XCTFail("missing gitLog source for project \(project.label)")
                 continue
