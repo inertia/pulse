@@ -1,6 +1,6 @@
 # Xcode
 *.xcodeproj/
-build/
+/build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
@@ -15,7 +15,7 @@ Package.resolved
 
 # Build output
 *.dmg
-build/
+/build/
 
 # Local
 .env
