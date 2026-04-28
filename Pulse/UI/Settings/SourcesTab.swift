@@ -52,7 +52,7 @@ struct SourcesTab: View {
                     set: { newValue in setLabel(source.id, newValue) }
                 ))
                 .textFieldStyle(.roundedBorder)
-                Text("\(kindLabel(source.kind)) — \(source.path.path)")
+                Text("\(kindLabel(source.kind))：\(source.path.path)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
