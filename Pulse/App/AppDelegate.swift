@@ -7,14 +7,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var scheduler: RefreshScheduler?
     private var cardStore: CardStore?
     private var sourceStore: SourceStore?
-    private var settings: Settings?
+    private var settings: Pulse.Settings?
+    private var onboardingController: OnboardingWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)   // 雙保險：LSUIElement + accessory
 
         let sourceStore = SourceStore()
         let cardStore = CardStore()
-        let settings = Settings()
+        let settings = Pulse.Settings()
         let scheduler = RefreshScheduler(
             sourceStore: sourceStore,
             cardStore: cardStore,
@@ -41,6 +42,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // load cached cards on launch
         cardStore.load()
+
+        if settings.firstRunCompleted {
+            // Returning user: start scheduler
+            Task { await scheduler.start() }
+        } else {
+            // First-run public build: show onboarding.
+            // (Internal build will short-circuit this in Task 33.)
+            #if !INTERNAL_BUILD
+            showOnboarding()
+            #else
+            // Internal build first-run path: filled in by Task 33.
+            Task { await scheduler.start() }
+            #endif
+        }
+    }
+
+    private func showOnboarding() {
+        let controller = OnboardingWindowController { [weak self] projects, selectedDirs in
+            self?.completeOnboarding(projects: projects, selectedDirs: selectedDirs)
+        }
+        self.onboardingController = controller
+        controller.show()
+    }
+
+    private func completeOnboarding(projects: [DetectedProject], selectedDirs: Set<URL>) {
+        guard let sourceStore = self.sourceStore,
+              let settings = self.settings,
+              let scheduler = self.scheduler else { return }
+
+        let newSources = AppDelegate.sourcesFromOnboarding(
+            projects: projects,
+            selectedDirs: selectedDirs
+        )
+        try? sourceStore.save(newSources)
+        settings.firstRunCompleted = true
+        onboardingController?.close()
+        onboardingController = nil
+
         Task { await scheduler.start() }
     }
 
@@ -57,5 +96,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         scheduler?.stop()
+    }
+}
+
+extension AppDelegate {
+    /// Convert onboarding selections to sources. Pure function for testability.
+    static func sourcesFromOnboarding(
+        projects: [DetectedProject],
+        selectedDirs: Set<URL>
+    ) -> [Source] {
+        var newSources: [Source] = []
+        for dir in selectedDirs {
+            guard let project = projects.first(where: { $0.dir == dir }) else { continue }
+            let label = project.dir.lastPathComponent
+            for kind in project.detectedFiles {
+                let filename: String
+                switch kind {
+                case .claudeMd: filename = "CLAUDE.md"
+                case .agentsMd: filename = "AGENTS.md"
+                case .geminiMd: filename = "GEMINI.md"
+                case .gitLog:   continue   // shouldn't happen: DetectedProject.detectedFiles only has markdown kinds
+                }
+                let path = project.dir.appendingPathComponent(filename)
+                newSources.append(Source(kind: kind, path: path, label: label, enabled: true))
+            }
+            if project.isGitRepo {
+                newSources.append(Source(kind: .gitLog, path: project.dir, label: label, enabled: true))
+            }
+        }
+        return newSources
     }
 }
