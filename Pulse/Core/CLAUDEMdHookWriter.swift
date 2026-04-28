@@ -38,6 +38,18 @@ enum CLAUDEMdHookWriter {
 
         寫完一句確認：「已記 pulse.md：[xxx]」
 
+        **完成 / 刪除規則**：user 講以下類型語句時，更新 pulse.md `## To Do` 對應行：
+
+        完成觸發：「X 完成」/「X 做完了」/「X 結了」/「done X」/「finished X」
+        → 找到對應 `- [ ]` 行，改成 `- [x] (done YYYY-MM-DD)` + 原內容
+
+        刪除觸發：「幫我刪掉 X」/「不要這條 X」/「拿掉 X」/「remove X」/「drop X」
+        → 找到對應 `- [ ]` 或 `- [x]` 行，整行 remove
+
+        寫完一句確認：「已標完成：[xxx]」或「已刪除：[xxx]」
+
+        **注意**：完成 30 天後 Pulse 會自動清掉那行（commit log 已涵蓋歷史）。
+
         **不要寫**：
         - 已完成（git commit log 涵蓋）
         - brainstorm 中、未拍板要做
