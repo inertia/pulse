@@ -131,19 +131,34 @@ struct PopoverContentView: View {
 
                     if !dones.isEmpty {
                         Divider().padding(.vertical, 4)
-                        DisclosureGroup(isExpanded: $showDone) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.18)) { showDone.toggle() }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .rotationEffect(.degrees(showDone ? 90 : 0))
+                                Text("已完成 (\(dones.count))")
+                                    .font(.system(.caption, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 4)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+
+                        if showDone {
                             VStack(spacing: 6) {
                                 ForEach(dones.prefix(20)) { card in
                                     CardRowView(card: card, onTap: { tap(card, in: group) })
                                 }
                             }
                             .padding(.top, 4)
-                        } label: {
-                            Text("已完成 (\(dones.count))")
-                                .font(.system(.caption, weight: .medium))
-                                .foregroundStyle(.secondary)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
-                        .padding(.horizontal, 4)
                     }
                 }
                 .padding(.horizontal, 12)
