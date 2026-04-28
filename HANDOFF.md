@@ -93,6 +93,19 @@ User 拍板：不做 runtime locale 切換，直接 `#if INTERNAL_BUILD` 切兩�
 
 要動的字串約 30-50 條：popover header / footer / tab / pills / QuickTodoComposer / OnboardingView / Settings tabs / EmptyStateView / LoadingPlaceholderView。pulse.md 的 header 文字也要決定（兩語都接受 vs 只英文）。
 
+### Q4: Settings → 管理監控專案 — **觀察 1-2 天後做**（2026-04-28 拍板）
+
+現狀（user 痛點）：
+- **個人版**：9 專案 hardcoded 在 `Pulse/Build/Internal.swift`，要砍 / 加只能改 Swift 重 build。日常用沒辦法自己增減。
+- **公開版**：onboarding 第一次掃描勾選後就鎖定；之後沒地方再呼叫一次 scan，只能進 Settings → Sources tab 一條條手動管。
+
+兩版都需要的功能（user 拍板「否則很難用」）：
+- Settings 加「重新掃描 Desktop」按鈕，跳出 onboarding-style 結果視窗讓 user 補勾新專案 / 取消勾舊專案
+- 個人版要能蓋掉 hardcoded list（讓 user 在 UI 改動，不用回 Internal.swift）
+- 拖檔加專案考慮（拖一個資料夾進 popover 直接成 source，跳過掃描）
+
+先觀察期 1-2 天看實際使用 pain points，再決定 scope。MVP 可能只做「重新掃描」按鈕，個人版 hardcoded list 改成 default 但允許覆寫。
+
 ---
 
 ## 核心檔案地圖
