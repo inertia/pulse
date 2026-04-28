@@ -64,6 +64,14 @@ final class RefreshScheduler: ObservableObject {
         }
         lastRefreshAt = Date()
         try? cardStore.save()
+
+        // Sweep aged `- [x] (done YYYY-MM-DD) ...` lines from pulse.md files.
+        // pulse.md is registered with kind=.claudeMd in Internal.swift, so
+        // distinguish by filename rather than kind.
+        let pulseURLs: [URL] = sources
+            .filter { $0.path.lastPathComponent == "pulse.md" }
+            .map { $0.path }
+        PulseFileMaintenance.cleanAgedDoneItems(pulseURLs: pulseURLs)
     }
 
     /// Refresh a single source (used by FSEvents trigger in Task 24).
