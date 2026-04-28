@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @StateObject private var filtersSettings = Pulse.Settings()
+
     var body: some View {
         TabView {
             SourcesTab()
                 .tabItem { Label("Sources", systemImage: "list.bullet") }
-            Text("FiltersTab placeholder (Task 29)")
+            FiltersTab(settings: filtersSettings)
                 .tabItem { Label("Filters", systemImage: "line.horizontal.3.decrease") }
             Text("AboutTab placeholder (Task 30)")
                 .tabItem { Label("About", systemImage: "info.circle") }
