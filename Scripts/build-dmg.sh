@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VERSION="${1:?Usage: build-dmg.sh <version> [internal|public|both]}"
+BUILD_KIND="${2:-both}"
+
+build_one() {
+  local kind="$1"
+  local config
+  local suffix
+  if [[ "$kind" == "internal" ]]; then
+    config="Release-Internal"
+    suffix="-internal"
+  else
+    config="Release-Public"
+    suffix=""
+  fi
+  local dmg="build/Pulse-${VERSION}${suffix}.dmg"
+
+  rm -rf "build/staging-${kind}"
+  mkdir -p "build/staging-${kind}"
+
+  xcodebuild -project Pulse.xcodeproj -scheme Pulse \
+    -configuration "$config" \
+    -derivedDataPath "build/dd-${kind}" \
+    -destination 'platform=macOS' \
+    CODE_SIGN_IDENTITY="" \
+    CODE_SIGNING_REQUIRED=NO \
+    CODE_SIGNING_ALLOWED=NO \
+    clean build
+
+  cp -R "build/dd-${kind}/Build/Products/${config}/Pulse.app" "build/staging-${kind}/"
+
+  hdiutil create -volname "Pulse ${VERSION}" \
+    -srcfolder "build/staging-${kind}" \
+    -ov -format UDZO "$dmg"
+
+  echo "OK: $dmg"
+}
+
+case "$BUILD_KIND" in
+  internal) build_one internal ;;
+  public)   build_one public ;;
+  both)     build_one public; build_one internal ;;
+  *) echo "Unknown kind: $BUILD_KIND"; exit 1 ;;
+esac
