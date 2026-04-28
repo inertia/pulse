@@ -22,6 +22,11 @@ targets:
     settings:
       base:
         ENABLE_PREVIEWS: YES
+        PRODUCT_NAME: Pulse
+        ENABLE_HARDENED_RUNTIME: YES
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_NSHighResolutionCapable: YES
   PulseTests:
     type: bundle.unit-test
     platform: macOS
@@ -29,9 +34,26 @@ targets:
       - path: PulseTests
     dependencies:
       - target: Pulse
+    settings:
+      base:
+        PRODUCT_NAME: PulseTests
+        BUNDLE_LOADER: $(TEST_HOST)
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Pulse.app/Contents/MacOS/Pulse
 schemes:
   Pulse:
     build:
       targets:
         Pulse: all
         PulseTests: [test]
+    test:
+      config: Debug-Public
+      targets:
+        - PulseTests
+    run:
+      config: Debug-Public
+    profile:
+      config: Release-Public
+    analyze:
+      config: Debug-Public
+    archive:
+      config: Release-Public
