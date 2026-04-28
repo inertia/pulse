@@ -1,0 +1,3 @@
+#include "Shared.xcconfig"
+PRODUCT_BUNDLE_IDENTIFIER = com.huangsunquan.pulse
+INFOPLIST_KEY_CFBundleDisplayName = Pulse
