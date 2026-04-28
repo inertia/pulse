@@ -15,8 +15,9 @@ final class MenubarIconController {
         popover.contentViewController = NSHostingController(rootView: rootView)
 
         if let button = statusItem.button {
-            let image = NSImage(systemSymbolName: "waveform.path.ecg",
-                                accessibilityDescription: "Pulse")
+            let image = NSImage(named: "MenuBarIcon")
+                ?? NSImage(systemSymbolName: "waveform.path.ecg",
+                           accessibilityDescription: "Pulse")
             image?.isTemplate = true   // 自動配深淺色 menubar
             button.image = image
             button.target = self
