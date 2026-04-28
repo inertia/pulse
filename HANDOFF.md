@@ -203,6 +203,17 @@ User 觀察 v0.2 IA 不對：「跨專案 review」現在被切成 9 個 per-pro
 
 現在 `已完成 (N) ▼` 是 per-project + collapsed by default。「review 跨專案」場景下這是反的：done 軸應該是 review 主角，不該藏起來。Q6 Overview 落地後，per-project tab 內的 disclosure 仍然保留（drill-down 場景合理藏起），但 Overview 內 done 是預設展開、cross-project chronological。
 
+### Q8: Menubar icon 細節（**下輪一次解**，2026-04-29 user 回報）
+
+User 在綠色森林桌布上看 menubar，覺得 icon「白底有點巨大」。Inspect 後兩件事：
+1. **`menubar_44.png` 角落 pixel = `(255, 255, 255, 255)` 白色 opaque** — qlmanage 輸出 SVG 雖然 stroke-only 但 PNG 帶白底。應該全透明 + 黑色 stroke，才能讓 macOS template 機制把白色背景當「無」、只 tint stroke。
+2. **44×22 viewBox 比 22×22 寬一倍** — designer SVG 跟 spec 文字不一致（spec 寫 22×22 artboard，SVG 是 44×22）；NSStatusItem.variableLength 吃 icon 寬度，所以 menubar slot 變得比一般 22pt 寬一倍。
+
+**Q8 fix 候選**（user 說下輪一起解）：
+- a) 把 SVG 改回 22×22 artboard，path 重新縮放到 (M 2,11 L 7,11 L 9,3 L 11,19 L 13,3 L 15,11 L 20,11)，stroke-width 1.6 不變
+- b) 渲染 pipeline 改用 rsvg-convert 或 Chrome headless，透明背景才會保留（qlmanage 對 stroke-only SVG 加白底是 macOS Quick Look 默認行為）
+- c) 兩個都做（a 解大小、b 解透明）→ 最徹底
+
 ---
 
 ## 核心檔案地圖
