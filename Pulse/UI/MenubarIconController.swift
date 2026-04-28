@@ -15,17 +15,11 @@ final class MenubarIconController {
         popover.contentViewController = NSHostingController(rootView: rootView)
 
         if let button = statusItem.button {
-            if let image = NSImage(named: "MenuBarIcon") {
-                // 非 template — 保留紅點顏色；trade-off：dark menubar 上 P 會偏暗
-                image.isTemplate = false
-                button.image = image
-            } else {
-                // fallback：asset 漏掉時用 SF Symbol（template 自動配色）
-                let symbol = NSImage(systemSymbolName: "waveform.path.ecg",
-                                     accessibilityDescription: "Pulse")
-                symbol?.isTemplate = true
-                button.image = symbol
-            }
+            let image = NSImage(named: "MenuBarIcon")
+                ?? NSImage(systemSymbolName: "waveform.path.ecg",
+                           accessibilityDescription: "Pulse")
+            image?.isTemplate = true   // designer spec：template image，macOS 自動配 light/dark
+            button.image = image
             button.target = self
             button.action = #selector(togglePopover)
         }
@@ -37,7 +31,8 @@ final class MenubarIconController {
             popover.performClose(nil)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            NSApp.activate(ignoringOtherApps: true)   // 啟用 app 才能收 keyboard events
+            // 不再 NSApp.activate — 否則 .transient 失焦訊號被吃掉，click-outside 不會 dismiss。
+            // popover 本身內部 SwiftUI 元件 focus 自己會處理鍵盤事件。
         }
     }
 
