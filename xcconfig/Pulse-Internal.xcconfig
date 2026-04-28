@@ -2,4 +2,5 @@
 GCC_PREPROCESSOR_DEFINITIONS = $(inherited) INTERNAL_BUILD=1
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) INTERNAL_BUILD
 PRODUCT_BUNDLE_IDENTIFIER = com.huangsunquan.pulse.internal
+PRODUCT_NAME = Pulse Internal
 INFOPLIST_KEY_CFBundleDisplayName = Pulse Internal

@@ -22,11 +22,23 @@ targets:
     settings:
       base:
         ENABLE_PREVIEWS: YES
-        PRODUCT_NAME: Pulse
         ENABLE_HARDENED_RUNTIME: YES
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_NSHighResolutionCapable: YES
+      configs:
+        Debug-Internal:
+          PRODUCT_NAME: Pulse Internal
+          PRODUCT_MODULE_NAME: Pulse
+        Release-Internal:
+          PRODUCT_NAME: Pulse Internal
+          PRODUCT_MODULE_NAME: Pulse
+        Debug-Public:
+          PRODUCT_NAME: Pulse
+          PRODUCT_MODULE_NAME: Pulse
+        Release-Public:
+          PRODUCT_NAME: Pulse
+          PRODUCT_MODULE_NAME: Pulse
   PulseTests:
     type: bundle.unit-test
     platform: macOS
