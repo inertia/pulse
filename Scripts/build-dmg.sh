@@ -30,6 +30,7 @@ build_one() {
     clean build
 
   cp -R "build/dd-${kind}/Build/Products/${config}/Pulse.app" "build/staging-${kind}/"
+  ln -s /Applications "build/staging-${kind}/Applications"
 
   hdiutil create -volname "Pulse ${VERSION}" \
     -srcfolder "build/staging-${kind}" \
