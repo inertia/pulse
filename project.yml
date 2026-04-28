@@ -32,6 +32,8 @@ targets:
     platform: macOS
     sources:
       - path: PulseTests
+        excludes:
+          - "Fixtures/**"
     dependencies:
       - target: Pulse
     settings:
