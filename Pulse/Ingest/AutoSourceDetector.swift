@@ -13,7 +13,8 @@ struct DetectedProject: Equatable {
 /// `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`. Used by public-version
 /// onboarding to surface candidate projects.
 ///
-/// Task 20: sequential / single-thread. Task 21 will add parallel + cancellable.
+/// Task 21: each root scans in its own concurrent Task; cooperative
+/// cancellation via `Task.isCancelled`; per-root-completion progress callback.
 struct AutoSourceDetector {
     /// Common developer-folder roots to scan. Each is HOME-relative.
     static let scanRoots: [URL] = [
@@ -35,6 +36,11 @@ struct AutoSourceDetector {
     /// Filenames whose presence in a directory marks it as a "project".
     static let detectedFilenames = ["CLAUDE.md", "AGENTS.md", "GEMINI.md"]
 
+    /// Progress callback signature: `(scanned, total)` where `scanned` is the
+    /// running count of projects yielded so far, and `total` is the upfront
+    /// goal — unknown for BFS, so always `nil` in v0.1.
+    typealias ProgressCallback = @Sendable (Int, Int?) -> Void
+
     let roots: [URL]
     let depth: Int
 
@@ -43,57 +49,82 @@ struct AutoSourceDetector {
         self.depth = depth
     }
 
-    /// Scan `roots` to `depth` layers (DFS bounded by depth), returning all
-    /// dirs that contain any `detectedFilenames` file. Deduped by canonical
-    /// (symlink-resolved) path.
-    func scan() async -> [DetectedProject] {
+    /// Scan `roots` to `depth` layers, returning all dirs that contain any
+    /// `detectedFilenames` file. Each root scans in parallel (one Task per
+    /// root). Cooperatively cancellable via `Task.cancel()`. Optional
+    /// `progress` callback fires once per root as it completes.
+    /// Deduped by canonical (symlink-resolved) path.
+    func scan(progress: ProgressCallback? = nil) async -> [DetectedProject] {
         var results: [DetectedProject] = []
         var seen = Set<String>()
-        for root in roots {
-            scanDirectory(root, currentDepth: 0, results: &results, seen: &seen)
+        var scanned = 0
+
+        await withTaskGroup(of: [DetectedProject].self) { group in
+            for root in roots {
+                group.addTask {
+                    await Self.scanRootParallel(root, depth: depth)
+                }
+            }
+            for await rootResults in group {
+                if Task.isCancelled { break }
+                for project in rootResults {
+                    let key = project.dir.standardizedFileURL.path
+                    if seen.insert(key).inserted {
+                        results.append(project)
+                    }
+                }
+                scanned = results.count
+                progress?(scanned, nil)
+            }
         }
+
         return results
     }
 
-    private func scanDirectory(_ dir: URL,
-                                 currentDepth: Int,
-                                 results: inout [DetectedProject],
-                                 seen: inout Set<String>) {
-        guard currentDepth <= depth else { return }
+    /// BFS within a single root. Sequential per-root (one queue, no
+    /// intra-root parallelism — Desktop folders are typically O(100s),
+    /// not big enough to justify it). Cooperatively cancellable.
+    private static func scanRootParallel(_ root: URL, depth: Int) async -> [DetectedProject] {
+        if Task.isCancelled { return [] }
+        var local: [DetectedProject] = []
+        var queue: [(URL, Int)] = [(root, 0)]
         let fm = FileManager.default
-        var isDir: ObjCBool = false
-        guard fm.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue else { return }
-        if Self.skipDirNames.contains(dir.lastPathComponent) { return }
 
-        // Detect project files in this directory
-        if let project = inspect(dir: dir),
-           seen.insert(dir.standardizedFileURL.path).inserted {
-            results.append(project)
-        }
+        while !queue.isEmpty {
+            if Task.isCancelled { break }
+            let (dir, currentDepth) = queue.removeFirst()
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue else { continue }
+            if skipDirNames.contains(dir.lastPathComponent) { continue }
 
-        // Recurse into subdirectories (DFS bounded by depth)
-        if currentDepth < depth {
-            guard let contents = try? fm.contentsOfDirectory(
-                at: dir,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            ) else { return }
-            for entry in contents {
-                var subIsDir: ObjCBool = false
-                if fm.fileExists(atPath: entry.path, isDirectory: &subIsDir), subIsDir.boolValue {
-                    scanDirectory(entry, currentDepth: currentDepth + 1,
-                                  results: &results, seen: &seen)
+            if let project = inspect(dir: dir) {
+                local.append(project)
+            }
+
+            if currentDepth < depth {
+                if let contents = try? fm.contentsOfDirectory(
+                    at: dir,
+                    includingPropertiesForKeys: [.isDirectoryKey],
+                    options: [.skipsHiddenFiles]
+                ) {
+                    for entry in contents {
+                        var subIsDir: ObjCBool = false
+                        if fm.fileExists(atPath: entry.path, isDirectory: &subIsDir), subIsDir.boolValue {
+                            queue.append((entry, currentDepth + 1))
+                        }
+                    }
                 }
             }
         }
+        return local
     }
 
-    private func inspect(dir: URL) -> DetectedProject? {
+    private static func inspect(dir: URL) -> DetectedProject? {
         let fm = FileManager.default
         var detectedFiles: [SourceKind] = []
         var newestMtime: Date? = nil
 
-        for filename in Self.detectedFilenames {
+        for filename in detectedFilenames {
             let filePath = dir.appendingPathComponent(filename)
             guard fm.fileExists(atPath: filePath.path) else { continue }
             let kind: SourceKind = filename == "CLAUDE.md" ? .claudeMd
