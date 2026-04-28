@@ -79,8 +79,9 @@ struct PopoverContentView: View {
         return out
     }
 
-    /// After PulseQuickWriter writes to a project's PULSE_QUICK.md, register it
-    /// as a source if not already, and trigger refresh so it appears in popover.
+    /// After PulseQuickWriter writes to a project's pulse.md, register the
+    /// file as a source, ensure CLAUDE.md has the hook section, and trigger
+    /// refresh so the new todo appears.
     private func handleProjectWrite(_ url: URL) {
         var sources = sourceStore.load()
         let projectDir = url.deletingLastPathComponent()
@@ -94,6 +95,10 @@ struct PopoverContentView: View {
             sources.append(new)
             try? sourceStore.save(sources)
         }
+        // Ensure CLAUDE.md hook (idempotent; no-op if file missing or already hooked).
+        let claudeURL = CLAUDEMdHookWriter.claudeMdURL(for: projectDir)
+        try? CLAUDEMdHookWriter.ensureHook(in: claudeURL)
+
         Task {
             if let s = sources.first(where: { $0.path == url }) {
                 await scheduler.refresh(s)
