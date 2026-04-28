@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct PopoverHeaderView: View {
@@ -19,6 +20,12 @@ struct PopoverHeaderView: View {
             }
             .buttonStyle(.borderless)
             .help("Refresh now")
+            Button(action: { NSApp.terminate(nil) }) {
+                Image(systemName: "power")
+            }
+            .buttonStyle(.borderless)
+            .keyboardShortcut("q", modifiers: .command)
+            .help("Quit Pulse (⌘Q)")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
