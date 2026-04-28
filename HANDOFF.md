@@ -106,6 +106,25 @@ User 拍板：不做 runtime locale 切換，直接 `#if INTERNAL_BUILD` 切兩�
 
 先觀察期 1-2 天看實際使用 pain points，再決定 scope。MVP 可能只做「重新掃描」按鈕，個人版 hardcoded list 改成 default 但允許覆寫。
 
+### Q5: Popover header dismiss 行為 + 鈕辨識度（2026-04-28 user 回報）
+
+User 回報「打開以後關掉鈕（⏻ Quit）比較明顯，但另一個『收起』小按鍵不太容易直接感覺到，很像設定的按鈕。本來以為離開視窗按別的地方就會自動收起，但結果沒有」。
+
+問題拆兩件：
+
+**A. Click-outside 不會 dismiss**：`MenubarIconController` 已設 `popover.behavior = .transient`（理論上失焦自動關），但 `togglePopover()` 在 show 之後緊接 `NSApp.activate(ignoringOtherApps: true)`（為了收 keyboard events）— Pulse 變 active app 後 .transient 的「失焦」訊號被吃掉，點 popover 外面不算 lose focus。
+- Fix 候選 1：show 完不要 activate，等使用者真的需要 keyboard 時再啟用（compose / search）
+- Fix 候選 2：保留 activate 但加 NSEvent.addGlobalMonitorForEvents(.leftMouseDown) 自己偵測 popover 外點擊 → performClose
+- Fix 候選 3：改用 `NSStatusItem` + 自己管 NSWindow（捨棄 NSPopover），完整自控 dismiss
+- 推薦先 1，token 成本最低；不影響 ⌘K search 因為 search 在 popover 內、popover open 期間 SwiftUI 會吃 keyboard
+
+**B. Header 三鈕語意混淆**：⚙️ gear / 🔄 arrow.clockwise / ⏻ power — user 把 ⏻ 認成「關閉」（其實是 Quit 整個 app），把 ⚙️ 誤認成「收起」。
+- 加一顆明確的「收起 popover」鈕（chevron.up / xmark）
+- 或：⏻ 改 icon 跟 label，更明顯是「離開 app」（避免跟「關 popover」混淆）
+- 或：拿掉 ⏻，靠 ⌘Q 即可（HANDOFF v0.1.x 的坑：原本沒 Quit 鈕，user 殺不掉才加，但加了之後反而混淆）
+
+兩件可一起做、commit 拆分。預估 30-60 min。
+
 ---
 
 ## 核心檔案地圖
