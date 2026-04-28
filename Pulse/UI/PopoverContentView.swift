@@ -48,8 +48,9 @@ struct PopoverContentView: View {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     ForEach(grouped) { group in
                         ProjectGroupView(group: group, onCardTap: { card in
-                            // Task 27 will wire openSourceRef here. v0.1 placeholder:
-                            print("Card tapped: \(card.title)")
+                            if let source = group.sources.first(where: { $0.id == card.sourceId }) {
+                                OpenSourceRef.open(card: card, source: source)
+                            }
                         })
                     }
                 }
