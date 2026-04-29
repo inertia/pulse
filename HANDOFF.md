@@ -330,7 +330,16 @@ open "/Applications/Pulse Internal.app"
 
 ## 重要 commit 序（讀 history 用）
 
-### v0.4 (2026-04-29, Q4)
+### v0.4.1 (2026-04-29, ship-day fixes)
+
+```
+1b6c577 fix(popover): explicit click-outside monitors so dismiss works regardless of app activation state
+c02a2f0 test(settings): lock openSettings creates + shows NSWindow with SettingsView
+25f053d fix(settings): build Settings as NSWindow + NSHostingController, bypass SwiftUI scene
+8ae7083 fix(settings): activate app before showSettingsWindow: so window actually appears (superseded by 25f053d)
+```
+
+### v0.4.0 (2026-04-29, Q4)
 
 ```
 a47d34b feat(settings): rescan Desktop button + RescanWindow (Q4)

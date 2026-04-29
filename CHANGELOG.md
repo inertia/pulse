@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v0.4.1：Settings 開啟 + popover click-outside dismiss 修整 (2026-04-29)
+
+### 修正
+
+- **Settings 視窗 ⌘, / ⚙️ 點擊現在會真的開**：之前 `NSApp.sendAction(showSettingsWindow:)` 在 LSUIElement (no Dock icon) app 上找不到 menu bar 註冊位置，popover 收起來但 Settings 視窗不會出現。改用 `NSHostingController(rootView: SettingsView())` 包成 NSWindow + `makeKeyAndOrderFront`，AppKit 原生路徑不仰賴 SwiftUI Settings scene。Cache 視窗 instance 重開不堆疊。
+- **popover 點外面會自動收**：上一輪 Settings 修法加了 `NSApp.activate`，副作用讓 app 一直 frontmost，`.transient` 失焦條件失效。改加 `NSEvent.addGlobalMonitorForEvents` + `addLocalMonitorForEvents` 主動監聽 click-outside，popover.show 時掛、performClose 時 cleanup。`.transient` 留著當第二道保險。
+
+### 新測試
+
+- `AppDelegateTests.testOpenSettingsCreatesAndShowsWindow` 鎖 `window.isVisible == true` 契約，後續 refactor 不會偷偷 fallback 回 SwiftUI scene
+- `AppDelegateTests.testOpenSettingsReusesCachedWindow` 鎖視窗 cache 不堆疊
+
+198/198 tests green。
+
+---
+
 ## v0.4.0：Settings 重新掃描 Desktop (2026-04-29)
 
 ### 新增功能
