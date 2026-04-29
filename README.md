@@ -12,17 +12,28 @@ Built for developers who use AI coding assistants (Claude Code, Codex, Cursor, G
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/screenshots/01-overview-urgent.png" width="320" alt="Overview tab — URGENT outstanding cards across projects">
-  &nbsp;
-  <img src="docs/screenshots/02-quick-todo-composer.png" width="320" alt="Quick todo composer with project picker">
-  &nbsp;
-  <img src="docs/screenshots/03-overview-done-7d.png" width="320" alt="Completed last 7 days, git commits and pulse.md mixed">
-</p>
-
-*Left:* Overview tab — URGENT cards aggregated from every tracked project, each tagged with a project chip and source-agent badge.
-*Centre:* Quick-todo composer — type once, choose whether the todo lives only inside Pulse or gets appended to a specific project's `pulse.md`.
-*Right:* Completed last 7 days — `git log` commits and `pulse.md` `[x]` items merged chronologically.
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/01-overview-urgent.png" alt="Overview tab — URGENT outstanding cards across projects">
+      <p><strong>Overview · URGENT outstanding</strong><br>Cards aggregated across every tracked project, each tagged with a project chip and source-agent badge.</p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/02-quick-todo-composer.png" alt="Quick todo composer with project picker">
+      <p><strong>Quick todo composer</strong><br>Type once, choose whether the todo lives only inside Pulse or gets appended to a specific project's <code>pulse.md</code>.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/03-overview-done-7d.png" alt="Completed last 7 days, git commits and pulse.md mixed">
+      <p><strong>Completed · last 7 days</strong><br><code>git log</code> commits and <code>pulse.md</code> <code>[x]</code> items merged chronologically with <code>git</code> / <code>pulse</code> agent badges.</p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/04-settings-rescan.png" alt="Settings → Sources tab with Rescan Desktop button">
+      <p><strong>Settings · Sources + Rescan Desktop</strong><br>Add / remove / toggle sources by hand, or click <em>Rescan Desktop</em> to find newly-added projects without restarting onboarding.</p>
+    </td>
+  </tr>
+</table>
 
 ## Features
 
