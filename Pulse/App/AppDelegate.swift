@@ -91,9 +91,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openSettings() {
-        // Close popover first (transient won't dismiss for same-app focus)
+        // Close popover first (transient won't dismiss for same-app focus).
         menubarController?.popover.performClose(nil)
-        // Open Settings scene
+        // Bring Pulse forward so the Settings scene window can show. Q5-A
+        // dropped `NSApp.activate` from togglePopover() to let .transient
+        // popovers click-outside dismiss; here we DO want activation so
+        // showSettingsWindow: actually displays a key window. Without this,
+        // the popover closed but the Settings window never appeared because
+        // the LSUIElement app was no longer foregrounded.
+        NSApp.activate(ignoringOtherApps: true)
         if #available(macOS 14, *) {
             NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         } else {
