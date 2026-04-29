@@ -29,11 +29,38 @@ Built for developers who use AI coding assistants (Claude Code, Codex, Cursor, G
 
 ## Install
 
-Download `Pulse-x.y.z.dmg` from the [GitHub Releases](https://github.com/inertia/pulse/releases) page, mount it, and drag Pulse.app into `/Applications`.
+Pulse is free and not signed by Apple, because paying $99/year for an Apple Developer ID just to ship a free open-source tool isn't a trade I'm willing to make. There are two install paths — pick whichever you prefer.
 
-On first launch, Pulse asks for read access to a small set of common dev folders (`~/Desktop`, `~/Projects`, `~/code`, `~/Developer`, `~/Documents`), scans one level deep for projects containing the supported markdown files, and lets you pick which to track.
+### Path A — download the dmg (one extra click on first open)
 
-After onboarding, Pulse lives in your menubar (no Dock icon) and starts watching the chosen sources.
+1. Download `Pulse-x.y.z.dmg` from the [GitHub Releases](https://github.com/inertia/pulse/releases) page.
+2. Mount it, drag `Pulse.app` into `/Applications`.
+3. **First launch only**: right-click `Pulse.app` in `/Applications` → `Open` → in the dialog click `Open` again. macOS won't ask after that.
+
+If you skipped step 3 and already saw the "unidentified developer" warning, you can clear the quarantine attribute from the terminal:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Pulse.app
+```
+
+This is exactly what the right-click trick does under the hood. Either works.
+
+### Path B — build from source (no dmg, no warning)
+
+Build with your own toolchain. Locally-built apps don't go through Gatekeeper, so there's no warning to bypass.
+
+```bash
+brew install xcodegen     # one-time
+git clone https://github.com/inertia/pulse.git
+cd pulse
+./Scripts/build-and-install.sh
+```
+
+The script generates the Xcode project, builds the Public Release configuration, copies `Pulse.app` to `/Applications`, and launches it. Takes about 30-60 seconds on first run.
+
+### What happens on first launch
+
+Pulse asks macOS for read access to common dev folders (`~/Desktop`, `~/Projects`, `~/code`, `~/Developer`, `~/Documents`), scans one level deep for projects containing the supported markdown files, and lets you pick which to track. After onboarding, Pulse lives in your menubar (no Dock icon) and starts watching the chosen sources.
 
 ## First-launch and daily use
 
