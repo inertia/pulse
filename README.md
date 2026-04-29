@@ -1,8 +1,28 @@
-# Pulse
+<p align="center">
+  <img src="docs/screenshots/pulse-icon.png" width="128" alt="Pulse app icon — amber pulse spike on slate">
+</p>
 
-A macOS menubar app that aggregates todos and recent work across multiple coding projects.
+<h1 align="center">Pulse</h1>
+
+<p align="center"><em>Cross-project todo &amp; done aggregator for the macOS menubar.</em></p>
+
+---
 
 Built for developers who use AI coding assistants (Claude Code, Codex, Cursor, Gemini CLI) and work across many repos. Pulse passively reads your `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `pulse.md` checkbox items and your `git log` conventional commits, then surfaces them in a single menubar popover so you can see what's outstanding and what just landed without `cd`-hopping between repositories.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/01-overview-urgent.png" width="320" alt="Overview tab — URGENT outstanding cards across projects">
+  &nbsp;
+  <img src="docs/screenshots/02-quick-todo-composer.png" width="320" alt="Quick todo composer with project picker">
+  &nbsp;
+  <img src="docs/screenshots/03-overview-done-7d.png" width="320" alt="Completed last 7 days, git commits and pulse.md mixed">
+</p>
+
+*Left:* Overview tab — URGENT cards aggregated from every tracked project, each tagged with a project chip and source-agent badge.
+*Centre:* Quick-todo composer — type once, choose whether the todo lives only inside Pulse or gets appended to a specific project's `pulse.md`.
+*Right:* Completed last 7 days — `git log` commits and `pulse.md` `[x]` items merged chronologically.
 
 ## Features
 
