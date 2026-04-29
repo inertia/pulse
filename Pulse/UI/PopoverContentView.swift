@@ -123,57 +123,72 @@ struct PopoverContentView: View {
                 onCardTap: handleOverviewCardTap
             )
         } else if let group = selectedGroup {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 6) {
-                    let todos = group.cards.filter { $0.status == .todo }
-                    let dones = group.cards.filter { $0.status == .done }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 6) {
+                        let todos = group.cards.filter { $0.status == .todo }
+                        let dones = group.cards.filter { $0.status == .done }
 
-                    if todos.isEmpty {
-                        Text(L.emptyNoTodos)
-                            .font(.callout)
-                            .foregroundStyle(.tertiary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 24)
-                    } else {
-                        ForEach(todos) { card in
-                            CardRowView(card: card, onTap: { tap(card, in: group) })
+                        if todos.isEmpty {
+                            Text(L.emptyNoTodos)
+                                .font(.callout)
+                                .foregroundStyle(.tertiary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 24)
+                        } else {
+                            ForEach(todos) { card in
+                                CardRowView(card: card, onTap: { tap(card, in: group) })
+                            }
+                        }
+
+                        if !dones.isEmpty {
+                            Divider().padding(.vertical, 4)
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.18)) { showDone.toggle() }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                        .rotationEffect(.degrees(showDone ? 90 : 0))
+                                    Text(L.doneDisclosure(dones.count))
+                                        .font(.system(.caption, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.vertical, 6)
+                                .padding(.horizontal, 4)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .id("done-disclosure")
+
+                            if showDone {
+                                VStack(spacing: 6) {
+                                    ForEach(dones.prefix(20)) { card in
+                                        CardRowView(card: card, onTap: { tap(card, in: group) })
+                                    }
+                                }
+                                .padding(.top, 4)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
                         }
                     }
-
-                    if !dones.isEmpty {
-                        Divider().padding(.vertical, 4)
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.18)) { showDone.toggle() }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .rotationEffect(.degrees(showDone ? 90 : 0))
-                                Text(L.doneDisclosure(dones.count))
-                                    .font(.system(.caption, weight: .medium))
-                                    .foregroundStyle(.secondary)
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 4)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-
-                        if showDone {
-                            VStack(spacing: 6) {
-                                ForEach(dones.prefix(20)) { card in
-                                    CardRowView(card: card, onTap: { tap(card, in: group) })
-                                }
-                            }
-                            .padding(.top, 4)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                }
+                .onChange(of: showDone) { _, newValue in
+                    // When user expands done disclosure, the newly-revealed
+                    // rows can land below the popover viewport and look like
+                    // the click did nothing. Anchor the disclosure header to
+                    // the top of the viewport on expand so revealed content
+                    // fills below it.
+                    if newValue {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            proxy.scrollTo("done-disclosure", anchor: .top)
                         }
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
             }
         } else {
             EmptyView()

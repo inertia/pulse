@@ -39,70 +39,84 @@ struct OverviewView: View {
         let isAllEmpty = urgentCards.isEmpty && highCards.isEmpty
             && last24h.isEmpty && last7dExcluding24h.isEmpty
 
-        return ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-                DigestLineView(summary: summary)
+        return ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    DigestLineView(summary: summary)
 
-                if !urgentCards.isEmpty {
-                    OverviewSection(
-                        title: L.overviewUrgent,
-                        accent: Brand.amber,
-                        count: urgentCards.count
-                    ) {
-                        ForEach(urgentCards) { card in
-                            row(for: card, dot: Brand.amber, sources: sources)
+                    if !urgentCards.isEmpty {
+                        OverviewSection(
+                            title: L.overviewUrgent,
+                            accent: Brand.amber,
+                            count: urgentCards.count
+                        ) {
+                            ForEach(urgentCards) { card in
+                                row(for: card, dot: Brand.amber, sources: sources)
+                            }
                         }
                     }
-                }
 
-                if !highCards.isEmpty {
-                    OverviewSection(
-                        title: L.overviewHigh,
-                        accent: Brand.amberDeep,
-                        count: highCards.count
-                    ) {
-                        ForEach(highCards) { card in
-                            row(for: card, dot: Brand.amberDeep, sources: sources)
+                    if !highCards.isEmpty {
+                        OverviewSection(
+                            title: L.overviewHigh,
+                            accent: Brand.amberDeep,
+                            count: highCards.count
+                        ) {
+                            ForEach(highCards) { card in
+                                row(for: card, dot: Brand.amberDeep, sources: sources)
+                            }
                         }
                     }
-                }
 
-                if !last24h.isEmpty {
-                    OverviewSection(
-                        title: L.overviewLast24h,
-                        accent: .secondary,
-                        count: last24h.count
-                    ) {
-                        ForEach(last24h) { card in
-                            row(for: card, dot: .green, sources: sources)
+                    if !last24h.isEmpty {
+                        OverviewSection(
+                            title: L.overviewLast24h,
+                            accent: .secondary,
+                            count: last24h.count
+                        ) {
+                            ForEach(last24h) { card in
+                                row(for: card, dot: .green, sources: sources)
+                            }
                         }
                     }
-                }
 
-                if !last7dExcluding24h.isEmpty {
-                    OverviewSection(
-                        title: L.overviewLast7d,
-                        accent: .secondary,
-                        count: last7dExcluding24h.count,
-                        collapsible: true,
-                        isExpanded: $showLastWeek
-                    ) {
-                        ForEach(last7dExcluding24h) { card in
-                            row(for: card, dot: .gray, sources: sources)
+                    if !last7dExcluding24h.isEmpty {
+                        OverviewSection(
+                            title: L.overviewLast7d,
+                            accent: .secondary,
+                            count: last7dExcluding24h.count,
+                            collapsible: true,
+                            isExpanded: $showLastWeek
+                        ) {
+                            ForEach(last7dExcluding24h) { card in
+                                row(for: card, dot: .gray, sources: sources)
+                            }
                         }
+                        .id("last-7d-section")
+                    }
+
+                    if isAllEmpty {
+                        Text(L.overviewEmpty)
+                            .font(.callout)
+                            .foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 24)
                     }
                 }
-
-                if isAllEmpty {
-                    Text(L.overviewEmpty)
-                        .font(.callout)
-                        .foregroundStyle(.tertiary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 24)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+            }
+            .onChange(of: showLastWeek) { _, newValue in
+                // Same UX gripe as the per-project done disclosure: expanding
+                // "完成 last 7d" without a scroll leaves the freshly-revealed
+                // rows below the popover viewport. Anchor the section header
+                // to the top of the viewport on expand.
+                if newValue {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        proxy.scrollTo("last-7d-section", anchor: .top)
+                    }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
         }
     }
 
