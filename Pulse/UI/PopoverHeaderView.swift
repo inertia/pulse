@@ -19,7 +19,8 @@ struct PopoverHeaderView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
-            .help("Refresh now")
+            .keyboardShortcut("r", modifiers: .command)
+            .help("Refresh (⌘R)")
             Button(action: { NSApp.terminate(nil) }) {
                 Image(systemName: "power")
             }
