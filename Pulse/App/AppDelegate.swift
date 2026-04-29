@@ -10,7 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settings: Pulse.Settings?
     private var quickTodoStore: QuickTodoStore?
     private var onboardingController: OnboardingWindowController?
-    private var settingsWindow: NSWindow?
+    /// Internal so PulseTests can introspect the Settings-window-on-demand
+    /// invariant. Don't access from production code outside this class.
+    var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)   // 雙保險：LSUIElement + accessory
@@ -91,7 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { await scheduler.start() }
     }
 
-    private func openSettings() {
+    /// Internal so PulseTests can drive this directly without simulating
+    /// menubar clicks (LSUIElement apps can't be poked via standard Apple
+    /// Events). Production callers stay through the popover gear button.
+    func openSettings() {
         // Close popover first (transient won't dismiss for same-app focus).
         menubarController?.popover.performClose(nil)
 
