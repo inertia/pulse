@@ -137,6 +137,10 @@ enum L {
                                                      en: "+ Add markdown source")
     static let settingsAddGitSource = bilingual(zh: "+ 加 git source",
                                                 en: "+ Add git source")
+    static let settingsRescanButton = bilingual(zh: "重新掃描 Desktop",
+                                                en: "Rescan Desktop")
+    static let settingsRescanWindowTitle = bilingual(zh: "重新掃描 — 加入新專案",
+                                                     en: "Rescan · Add new projects")
 }
 
 private func bilingual(zh: String, en: String) -> String {

@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct SourcesTab: View {
     @State private var sources: [Source] = []
+    @State private var rescanController: RescanWindowController?
     private let sourceStore = SourceStore()
 
     var body: some View {
@@ -11,6 +12,7 @@ struct SourcesTab: View {
             HStack {
                 Text("Sources").font(.headline)
                 Spacer()
+                Button(L.settingsRescanButton) { startRescan() }
                 Button(L.settingsAddMarkdownSource) { addMarkdownSource() }
                 Button(L.settingsAddGitSource) { addGitSource() }
             }
@@ -156,5 +158,45 @@ struct SourcesTab: View {
             try? sourceStore.save(all)
             reload()
         }
+    }
+
+    /// Open a modal window that re-runs `AutoSourceDetector` on the standard
+    /// dev folders and lets the user pick newly-discovered projects to add.
+    /// Already-tracked dirs are filtered out so the list shows only adds.
+    /// Result merges with existing sources — never replaces.
+    private func startRescan() {
+        let existingDirs = Self.existingDirs(from: sourceStore.load())
+        let controller = RescanWindowController(existingDirs: existingDirs) { projects, selectedDirs in
+            let newSources = AppDelegate.sourcesFromOnboarding(
+                projects: projects,
+                selectedDirs: selectedDirs
+            )
+            var all = sourceStore.load()
+            all.append(contentsOf: newSources)
+            try? sourceStore.save(all)
+            reload()
+            rescanController?.close()
+            rescanController = nil
+        }
+        rescanController = controller
+        controller.show()
+    }
+
+    /// Canonical path strings for project dirs covered by `sources` (markdown
+    /// sources resolve to their parent dir; gitLog sources are dirs already).
+    /// Returns `Set<String>` rather than `Set<URL>` because `URL.deletingLastPathComponent`
+    /// adds a trailing slash whereas `URL(fileURLWithPath:)` does not — the
+    /// difference makes URL Set membership unreliable. Comparing canonical
+    /// `.path` strings dodges that. Public so unit tests can exercise the
+    /// merge-filter logic.
+    static func existingDirs(from sources: [Source]) -> Set<String> {
+        Set(sources.map { source -> String in
+            switch source.kind {
+            case .gitLog:
+                return source.path.path
+            case .claudeMd, .agentsMd, .geminiMd:
+                return source.path.deletingLastPathComponent().path
+            }
+        })
     }
 }
