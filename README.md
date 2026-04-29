@@ -58,6 +58,24 @@ Built for developers who use AI coding assistants (Claude Code, Codex, Cursor, G
 | `pulse.md` | Pulse's own convention; Quick Todo writes here |
 | `git log` | Conventional Commits (`feat:`, `fix:`, `chore:`, etc.) from the last 30 days |
 
+## Natural-language todos for non-coder researchers
+
+When Pulse first detects a project, it writes a small "hook" block into that project's `CLAUDE.md`. The hook teaches Claude Code (and other compatible AI assistants) to recognise a set of natural-language trigger phrases and automatically append the resulting todo to the project's `pulse.md`. You never need to write Markdown checkbox syntax by hand, and you never need to leave the AI conversation to file a note.
+
+This matters particularly for researchers, writers, scholars, and other non-coders who already use AI assistants for thesis revision, fieldwork notes, interview transcription, literature reviews, or grant drafting — anyone whose primary interaction with an AI is conversational rather than code-shaped.
+
+| What you say to the AI | What the AI does |
+| --- | --- |
+| "Add todo X", "remember X", "TODO: X", "don't forget X" | Appends `- [ ] (today's date) X` under the `## To Do` heading of `<project>/pulse.md` |
+| "Make X a priority", "do X first", "P0", "urgent" | Appends `- [ ] 🔴 (today's date) X`, automatically grouped under URGENT in the Pulse Overview |
+| "X is high priority", "X is important" | Appends `- [ ] 🟡 (today's date) X`, automatically grouped under HIGH |
+| "X is done", "finished X", "completed X" | Rewrites the corresponding `- [ ]` line as `- [x] (done today's date) X` |
+| "Drop X", "remove X", "delete that one" | Removes the entire line |
+
+The phrases are matched semantically by the AI assistant; you do not need to recite them verbatim. *"Please prioritise sorting out the bibliography for chapter three"* or *"the first interview transcript is now finalised"* trigger the same behaviour.
+
+Once a todo lands in `pulse.md`, Pulse picks it up through filesystem monitoring (usually within a second or two) and surfaces it in the menubar popover. Your tracked projects collectively form a single working list, accessible at any moment without leaving the menubar — and without a single keystroke spent on Markdown.
+
 ## Install
 
 Pulse is free and not signed by Apple, because paying $99/year for an Apple Developer ID just to ship a free open-source tool isn't a trade I'm willing to make. There are two install paths — pick whichever you prefer.
