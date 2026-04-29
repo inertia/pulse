@@ -14,6 +14,7 @@ struct PopoverHeaderView: View {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.borderless)
+            .keyboardShortcut(",", modifiers: .command)
             .help("Settings (⌘,)")
             Button(action: onRefresh) {
                 Image(systemName: "arrow.clockwise")
