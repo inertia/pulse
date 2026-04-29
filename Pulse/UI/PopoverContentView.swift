@@ -12,7 +12,7 @@ struct PopoverContentView: View {
     let sourceStore: SourceStore
     let onSettingsTap: () -> Void
 
-    @State private var selectedLabel: String?
+    @State private var selectedLabel: String? = ProjectTabBar.overviewLabel
     @State private var showDone = false
 
     var body: some View {
@@ -42,7 +42,11 @@ struct PopoverContentView: View {
             composer
         } else {
             VStack(spacing: 0) {
-                ProjectTabBar(groups: grouped, selectedLabel: $selectedLabel)
+                ProjectTabBar(
+                    groups: grouped,
+                    selectedLabel: $selectedLabel,
+                    overviewBadgeCount: overviewBadgeCount
+                )
                 Divider().opacity(0.3)
                 projectBody
                 composer
@@ -111,7 +115,14 @@ struct PopoverContentView: View {
 
     @ViewBuilder
     private var projectBody: some View {
-        if let group = selectedGroup {
+        if selectedLabel == ProjectTabBar.overviewLabel {
+            OverviewView(
+                cardStore: cardStore,
+                quickTodoStore: quickTodoStore,
+                sourceStore: sourceStore,
+                onCardTap: handleOverviewCardTap
+            )
+        } else if let group = selectedGroup {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 6) {
                     let todos = group.cards.filter { $0.status == .todo }
@@ -182,6 +193,26 @@ struct PopoverContentView: View {
         }
     }
 
+    /// Overview-tab tap handler: card is not bound to a single ProjectGroup
+    /// so we resolve the source from sourceStore directly.
+    private func handleOverviewCardTap(_ card: Card) {
+        if card.sourceId == QuickTodoConstants.sourceId {
+            if let uuid = UUID(uuidString: card.id) {
+                quickTodoStore.toggle(uuid)
+            }
+            return
+        }
+        if let source = sourceStore.load().first(where: { $0.id == card.sourceId }) {
+            OpenSourceRef.open(card: card, source: source)
+        }
+    }
+
+    private var overviewBadgeCount: Int {
+        grouped.reduce(0) { sum, group in
+            sum + group.cards.filter { $0.status == .todo }.count
+        }
+    }
+
     // MARK: - Group / stat composition
 
     private var grouped: [ProjectGroup] {
@@ -208,17 +239,14 @@ struct PopoverContentView: View {
     }
 
     private func ensureSelection() {
+        // Overview is a sentinel that always exists — never invalidate it.
+        if selectedLabel == ProjectTabBar.overviewLabel { return }
         if let label = selectedLabel, grouped.contains(where: { $0.label == label }) {
             return
         }
-        // pick the project with the most TODOs, or first available
-        let bestLabel = grouped
-            .max(by: {
-                $0.cards.filter { $0.status == .todo }.count <
-                $1.cards.filter { $0.status == .todo }.count
-            })?.label
-            ?? grouped.first?.label
-        selectedLabel = bestLabel
+        // Selected project disappeared (source removed) or initial state with no
+        // selection — fall back to Overview rather than auto-jumping into a project.
+        selectedLabel = ProjectTabBar.overviewLabel
     }
 }
 
