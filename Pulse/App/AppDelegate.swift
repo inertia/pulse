@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settings: Pulse.Settings?
     private var quickTodoStore: QuickTodoStore?
     private var onboardingController: OnboardingWindowController?
+    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)   // 雙保險：LSUIElement + accessory
@@ -93,18 +94,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func openSettings() {
         // Close popover first (transient won't dismiss for same-app focus).
         menubarController?.popover.performClose(nil)
-        // Bring Pulse forward so the Settings scene window can show. Q5-A
-        // dropped `NSApp.activate` from togglePopover() to let .transient
-        // popovers click-outside dismiss; here we DO want activation so
-        // showSettingsWindow: actually displays a key window. Without this,
-        // the popover closed but the Settings window never appeared because
-        // the LSUIElement app was no longer foregrounded.
+
+        // LSUIElement (no Dock icon) apps don't reliably auto-route ⌘, /
+        // `showSettingsWindow:` to a SwiftUI `Settings { ... }` scene because
+        // there's no app menu bar to register the action against. Earlier
+        // attempts with `NSApp.sendAction(Selector("showSettingsWindow:"))`
+        // closed the popover but never showed a window. Bypass that mechanism
+        // and present `SettingsView()` in our own NSHostingController-backed
+        // NSWindow. Cache it so reopening reuses the same window instance.
         NSApp.activate(ignoringOtherApps: true)
-        if #available(macOS 14, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+
+        if let existing = settingsWindow {
+            existing.makeKeyAndOrderFront(nil)
+            return
         }
+        let hosting = NSHostingController(rootView: SettingsView())
+        let window = NSWindow(contentViewController: hosting)
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.title = L.pulseSettingsWindow
+        window.setContentSize(NSSize(width: 560, height: 420))
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        settingsWindow = window
     }
 
     func applicationWillTerminate(_ notification: Notification) {
