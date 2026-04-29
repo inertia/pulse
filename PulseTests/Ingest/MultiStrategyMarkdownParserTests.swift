@@ -277,4 +277,44 @@ final class MultiStrategyMarkdownParserTests: XCTestCase {
         XCTAssertEqual(cardsWithDate[0].title, "foo")
         XCTAssertEqual(cardsWithoutDate[0].title, "foo")
     }
+
+    // MARK: - 12. Priority-from-section-heading injection (Q6 Overview)
+
+    /// Real pulse.md format puts 🔴/🟡 on a `### 🔴 URGENT` heading, with bullets
+    /// underneath that carry no per-line emoji. `normalize` injects synthetic
+    /// `priority-urgent` / `priority-high` tags from the enclosing heading so
+    /// the Overview-tab aggregator can detect priority either way.
+    func testPriorityFromSectionHeadingInjectedAsTag() throws {
+        let url = try writeTempMarkdown(content: """
+        ## To Do
+
+        ### 🔴 URGENT / P0
+
+        - [ ] (CLAUDE.md §URGENT) **P0-1: schema drift**
+        - [ ] (HEALTH_CHECK) **P0-2: duplicate markdown**
+
+        ### 🟡 HIGH
+
+        - [ ] (project_x) **P1: live preview**
+
+        ### 🟢 MEDIUM
+
+        - [ ] (project_x) **P2: long content craft**
+
+        """)
+        let cards = try MultiStrategyMarkdownParser().parse(filePath: url, sourceId: UUID())
+
+        let urgent = cards.filter { $0.tags.contains("priority-urgent") }
+        let high = cards.filter { $0.tags.contains("priority-high") }
+        let untagged = cards.filter {
+            !$0.tags.contains("priority-urgent") && !$0.tags.contains("priority-high")
+        }
+
+        XCTAssertEqual(urgent.count, 2,
+                       "2 bullets under `### 🔴 URGENT / P0` must carry priority-urgent")
+        XCTAssertEqual(high.count, 1,
+                       "1 bullet under `### 🟡 HIGH` must carry priority-high")
+        XCTAssertEqual(untagged.count, 1,
+                       "1 bullet under `### 🟢 MEDIUM` (no 🔴/🟡) must remain untagged")
+    }
 }

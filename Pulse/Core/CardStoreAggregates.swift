@@ -7,16 +7,24 @@ extension CardStore {
         case normal
     }
 
-    /// Detect priority from the card's leading emoji marker.
-    /// 🔴 → urgent, 🟡 → high, otherwise normal.
+    /// Detect priority from the card's leading emoji marker OR a synthetic tag
+    /// derived from its enclosing section heading.
     ///
-    /// Inferred at query time rather than stored as a Card field — keeps the
-    /// cache schema (version 1) stable and avoids touching the ingest parsers.
-    /// pulse.md hook format `- [ ] 🔴 (YYYY-MM-DD) {內容}` lands the emoji at
-    /// the start of `Card.title` after date stripping, which `hasPrefix` catches.
+    /// Two layouts are supported because real-world pulse.md files use both:
+    /// * Hook line format: `- [ ] 🔴 (YYYY-MM-DD) {內容}` — emoji lands at
+    ///   the start of `Card.title` after date stripping (`hasPrefix` catches it).
+    /// * Section heading format: `### 🔴 URGENT / P0` followed by bullets
+    ///   without per-line emoji — `MultiStrategyMarkdownParser.normalize`
+    ///   injects `priority-urgent` / `priority-high` tags from the heading.
+    ///
+    /// Inferred at query time so the cache schema (version 1) stays stable.
     static func priority(of card: Card) -> Priority {
-        if card.title.hasPrefix("🔴") { return .urgent }
-        if card.title.hasPrefix("🟡") { return .high }
+        if card.title.hasPrefix("🔴") || card.tags.contains("priority-urgent") {
+            return .urgent
+        }
+        if card.title.hasPrefix("🟡") || card.tags.contains("priority-high") {
+            return .high
+        }
         return .normal
     }
 

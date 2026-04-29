@@ -86,6 +86,20 @@ final class MultiStrategyMarkdownParser {
         // Final trim of any leading/trailing whitespace introduced by stripping.
         title = title.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Derive priority hint from enclosing section heading. pulse.md
+        // convention puts 🔴/🟡/🟢 on the heading (`### 🔴 URGENT`), not the
+        // bullet itself, so query-time `title.hasPrefix("🔴")` would miss
+        // those. Surface the signal through a synthetic tag the aggregator
+        // can read alongside the title-prefix path. The hook format
+        // `- [ ] 🔴 (...)` (emoji on bullet) is still detected by title prefix
+        // so both layouts work.
+        var augmentedTags = foundTags
+        if item.sectionHeading.contains("🔴") {
+            augmentedTags.append("priority-urgent")
+        } else if item.sectionHeading.contains("🟡") {
+            augmentedTags.append("priority-high")
+        }
+
         return ParsedItem(
             title: title,
             body: item.body,
@@ -94,7 +108,7 @@ final class MultiStrategyMarkdownParser {
             sectionHeading: item.sectionHeading,
             dueDate: dueDate,
             completedAt: completedAt,
-            tags: foundTags
+            tags: augmentedTags
         )
     }
 

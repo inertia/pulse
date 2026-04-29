@@ -170,13 +170,14 @@ final class CardStoreTests: XCTestCase {
 
     // MARK: - Aggregates (Q6 Overview tab)
 
-    /// Build a Card with optional completedAt. Distinct from `makeCard` to avoid
-    /// signature drift on the existing helper used by the load/save tests.
+    /// Build a Card with optional completedAt + tags. Distinct from `makeCard` to
+    /// avoid signature drift on the existing helper used by the load/save tests.
     private func makeAggregateCard(
         sourceId: UUID,
         title: String,
         status: Status = .todo,
-        completedAt: Date? = nil
+        completedAt: Date? = nil,
+        tags: [String] = []
     ) -> Card {
         Card(
             id: Card.makeId(path: "/x/CLAUDE.md", sectionHeading: "## Todo", normalizedTitle: title),
@@ -187,7 +188,7 @@ final class CardStoreTests: XCTestCase {
             dueDate: nil,
             completedAt: completedAt,
             sourceRef: "/x/CLAUDE.md:1",
-            tags: []
+            tags: tags
         )
     }
 
@@ -233,6 +234,34 @@ final class CardStoreTests: XCTestCase {
         XCTAssertTrue(urgent.allSatisfy { $0.title.hasPrefix("🔴") })
         XCTAssertEqual(high.count, 1, "🟡 prefix → high (1 card)")
         XCTAssertEqual(normal.count, 1, "no emoji → normal (1 card)")
+    }
+
+    // MARK: - 9b. priority detection from synthetic tag (section heading derived)
+
+    /// Real pulse.md format puts the priority emoji on a `### 🔴 URGENT` heading,
+    /// not on the bullet itself. `MultiStrategyMarkdownParser.normalize` injects
+    /// `priority-urgent` / `priority-high` tags so query-time detection still
+    /// works. `priority(of:)` must read both paths.
+    func testCardsAcrossProjects_filtersByPriority_fromSyntheticTag() {
+        let store = CardStore(directoryURL: tempDir)
+        let src = UUID()
+        store.replace(forSource: src, with: [
+            makeAggregateCard(sourceId: src,
+                              title: "(file ref) **P0-1: schema drift**",
+                              tags: ["priority-urgent"]),
+            makeAggregateCard(sourceId: src,
+                              title: "**P1: live preview**",
+                              tags: ["priority-high"]),
+            makeAggregateCard(sourceId: src,
+                              title: "no priority tag")
+        ])
+
+        let urgent = store.cardsAcrossProjects(status: .todo, priority: .urgent)
+        let high = store.cardsAcrossProjects(status: .todo, priority: .high)
+
+        XCTAssertEqual(urgent.count, 1, "priority-urgent tag → urgent")
+        XCTAssertEqual(urgent.first?.title, "(file ref) **P0-1: schema drift**")
+        XCTAssertEqual(high.count, 1, "priority-high tag → high")
     }
 
     // MARK: - 10. doneCardsLast hour boundary
