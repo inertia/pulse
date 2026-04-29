@@ -167,4 +167,124 @@ final class CardStoreTests: XCTestCase {
         XCTAssertTrue(raw.contains("\"version\" : 1"),
                       "saved JSON must contain `\"version\" : 1` (sortedKeys + prettyPrinted), got:\n\(raw)")
     }
+
+    // MARK: - Aggregates (Q6 Overview tab)
+
+    /// Build a Card with optional completedAt. Distinct from `makeCard` to avoid
+    /// signature drift on the existing helper used by the load/save tests.
+    private func makeAggregateCard(
+        sourceId: UUID,
+        title: String,
+        status: Status = .todo,
+        completedAt: Date? = nil
+    ) -> Card {
+        Card(
+            id: Card.makeId(path: "/x/CLAUDE.md", sectionHeading: "## Todo", normalizedTitle: title),
+            sourceId: sourceId,
+            title: title,
+            body: nil,
+            status: status,
+            dueDate: nil,
+            completedAt: completedAt,
+            sourceRef: "/x/CLAUDE.md:1",
+            tags: []
+        )
+    }
+
+    // MARK: - 8. cardsAcrossProjects filter by status
+
+    func testCardsAcrossProjects_filtersByStatus() {
+        let store = CardStore(directoryURL: tempDir)
+        let s1 = UUID(); let s2 = UUID()
+        store.replace(forSource: s1, with: [
+            makeAggregateCard(sourceId: s1, title: "todo-A", status: .todo),
+            makeAggregateCard(sourceId: s1, title: "done-A", status: .done, completedAt: Date())
+        ])
+        store.replace(forSource: s2, with: [
+            makeAggregateCard(sourceId: s2, title: "todo-B", status: .todo)
+        ])
+
+        let todos = store.cardsAcrossProjects(status: .todo)
+        let dones = store.cardsAcrossProjects(status: .done)
+
+        XCTAssertEqual(Set(todos.map { $0.title }), ["todo-A", "todo-B"],
+                       "todo filter must return all todos across sources")
+        XCTAssertEqual(Set(dones.map { $0.title }), ["done-A"],
+                       "done filter must return only done cards")
+    }
+
+    // MARK: - 9. cardsAcrossProjects filter by priority (🔴 / 🟡 prefix)
+
+    func testCardsAcrossProjects_filtersByPriority() {
+        let store = CardStore(directoryURL: tempDir)
+        let src = UUID()
+        store.replace(forSource: src, with: [
+            makeAggregateCard(sourceId: src, title: "🔴 ship pulse v0.3"),
+            makeAggregateCard(sourceId: src, title: "🟡 fix tooltip"),
+            makeAggregateCard(sourceId: src, title: "regular task"),
+            makeAggregateCard(sourceId: src, title: "🔴 second urgent")
+        ])
+
+        let urgent = store.cardsAcrossProjects(status: .todo, priority: .urgent)
+        let high = store.cardsAcrossProjects(status: .todo, priority: .high)
+        let normal = store.cardsAcrossProjects(status: .todo, priority: .normal)
+
+        XCTAssertEqual(urgent.count, 2, "🔴 prefix → urgent (2 cards)")
+        XCTAssertTrue(urgent.allSatisfy { $0.title.hasPrefix("🔴") })
+        XCTAssertEqual(high.count, 1, "🟡 prefix → high (1 card)")
+        XCTAssertEqual(normal.count, 1, "no emoji → normal (1 card)")
+    }
+
+    // MARK: - 10. doneCardsLast hour boundary
+
+    func testDoneCardsLast_excludesOlderThanCutoff() {
+        let store = CardStore(directoryURL: tempDir)
+        let src = UUID()
+        let now = Date()
+        let inside = now.addingTimeInterval(-23 * 3600)   // 23h ago — within 24h
+        let outside = now.addingTimeInterval(-25 * 3600)  // 25h ago — beyond 24h
+        store.replace(forSource: src, with: [
+            makeAggregateCard(sourceId: src, title: "recent-done",
+                              status: .done, completedAt: inside),
+            makeAggregateCard(sourceId: src, title: "old-done",
+                              status: .done, completedAt: outside)
+        ])
+
+        let recent = store.doneCardsLast(hours: 24, now: now)
+
+        XCTAssertEqual(recent.map { $0.title }, ["recent-done"],
+                       "doneCardsLast must include cards within cutoff and exclude older ones")
+    }
+
+    // MARK: - 11. digestSummary counts
+
+    func testDigestSummary_countsCorrectly() {
+        let store = CardStore(directoryURL: tempDir)
+        let s1 = UUID(); let s2 = UUID(); let s3 = UUID()
+        let now = Date()
+        let earlierToday = Calendar.current.startOfDay(for: now).addingTimeInterval(3 * 3600)
+        store.replace(forSource: s1, with: [
+            makeAggregateCard(sourceId: s1, title: "todo-1"),
+            makeAggregateCard(sourceId: s1, title: "done-today",
+                              status: .done, completedAt: earlierToday)
+        ])
+        store.replace(forSource: s2, with: [
+            makeAggregateCard(sourceId: s2, title: "todo-2"),
+            makeAggregateCard(sourceId: s2, title: "todo-3")
+        ])
+        // s3 has only a done card — outstanding count for s3 is 0, so it is NOT
+        // counted as a "project with outstanding".
+        store.replace(forSource: s3, with: [
+            makeAggregateCard(sourceId: s3, title: "old-done",
+                              status: .done,
+                              completedAt: now.addingTimeInterval(-5 * 86400))
+        ])
+
+        let digest = store.digestSummary(now: now)
+
+        XCTAssertEqual(digest.doneToday, 1, "only the today-done counts")
+        XCTAssertEqual(digest.outstanding, 3, "3 todo cards across s1+s2")
+        XCTAssertEqual(digest.projectsWithOutstanding, 2,
+                       "s1 and s2 each have ≥1 todo; s3 has none")
+    }
 }
