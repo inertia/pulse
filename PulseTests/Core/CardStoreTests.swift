@@ -285,6 +285,31 @@ final class CardStoreTests: XCTestCase {
                        "doneCardsLast must include cards within cutoff and exclude older ones")
     }
 
+    // MARK: - 10b. cardsCompletedWithin half-open boundary (no chain double-count)
+
+    /// `last 24h` and `last 7d but not last 24h` must be disjoint sets.
+    /// A card completed at exactly 24h-ago should land in the older window only.
+    func testCardsCompletedWithin_halfOpenBoundary_avoidsDuplicateOnChainedWindows() {
+        let store = CardStore(directoryURL: tempDir)
+        let src = UUID()
+        let now = Date()
+        let exact24hAgo = now.addingTimeInterval(-24 * 3600)
+        store.replace(forSource: src, with: [
+            makeAggregateCard(sourceId: src, title: "boundary",
+                              status: .done, completedAt: exact24hAgo)
+        ])
+
+        let last24 = CardStore.cardsCompletedWithin(store.cards, hoursAgoLower: 24, now: now)
+        let last7d = CardStore.cardsCompletedWithin(
+            store.cards, hoursAgoLower: 24 * 7, hoursAgoUpper: 24, now: now
+        )
+
+        XCTAssertEqual(last24.count, 0,
+                       "card at exactly 24h-ago must NOT be in last24h (lower bound is exclusive)")
+        XCTAssertEqual(last7d.count, 1,
+                       "card at exactly 24h-ago belongs to the older window (upper bound is inclusive)")
+    }
+
     // MARK: - 11. digestSummary counts
 
     func testDigestSummary_countsCorrectly() {

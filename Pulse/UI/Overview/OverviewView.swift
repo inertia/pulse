@@ -5,10 +5,10 @@ import SwiftUI
 ///
 /// Composes (top to bottom):
 /// 1. `DigestLineView` — one-sentence summary
-/// 2. `🔴 URGENT outstanding` — todos with title prefix 🔴, across all projects
-/// 3. `🟡 HIGH outstanding`   — todos with title prefix 🟡
+/// 2. `🔴 URGENT outstanding` — todos detected via `CardStore.priority(of:)`
+/// 3. `🟡 HIGH outstanding`   — same; via title prefix or section-heading-derived tag
 /// 4. `完成 last 24h`          — done cards (git commit + pulse.md `[x]`) sorted by completedAt desc
-/// 5. `完成 last 7d`           — collapsed by default; older done cards within the last week
+/// 5. `完成 last 7d`           — collapsed by default; cards completed 24h..7d ago (no overlap with 24h)
 struct OverviewView: View {
     @ObservedObject var cardStore: CardStore
     @ObservedObject var quickTodoStore: QuickTodoStore
@@ -18,9 +18,30 @@ struct OverviewView: View {
     @State private var showLastWeek = false
 
     var body: some View {
-        ScrollView {
+        // Cache once per render: combined cards (cardStore + quickTodos) and the
+        // sources lookup. Without caching, sourceStore.load() reads disk per row,
+        // and `allCards` array concat runs once per derived collection. SwiftUI
+        // re-renders body on cardStore @Published mutations, so this scope is
+        // the right level of memoization.
+        let cards = cardStore.cards + quickTodoStore.cards()
+        let sources = sourceStore.load()
+        let summary = CardStore.digest(cards)
+
+        let urgentCards = CardStore.filterCards(cards, status: .todo, priority: .urgent)
+            .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
+        let highCards = CardStore.filterCards(cards, status: .todo, priority: .high)
+            .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
+        let last24h = CardStore.cardsCompletedWithin(cards, hoursAgoLower: 24)
+        let last7dExcluding24h = CardStore.cardsCompletedWithin(
+            cards, hoursAgoLower: 24 * 7, hoursAgoUpper: 24
+        )
+
+        let isAllEmpty = urgentCards.isEmpty && highCards.isEmpty
+            && last24h.isEmpty && last7dExcluding24h.isEmpty
+
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                DigestLineView(summary: digestSummary)
+                DigestLineView(summary: summary)
 
                 if !urgentCards.isEmpty {
                     OverviewSection(
@@ -29,7 +50,7 @@ struct OverviewView: View {
                         count: urgentCards.count
                     ) {
                         ForEach(urgentCards) { card in
-                            row(for: card, dot: Brand.amber)
+                            row(for: card, dot: Brand.amber, sources: sources)
                         }
                     }
                 }
@@ -41,35 +62,33 @@ struct OverviewView: View {
                         count: highCards.count
                     ) {
                         ForEach(highCards) { card in
-                            row(for: card, dot: Brand.amberDeep)
+                            row(for: card, dot: Brand.amberDeep, sources: sources)
                         }
                     }
                 }
 
-                let recent = doneIn(hoursMin: 0, hoursMax: 24)
-                if !recent.isEmpty {
+                if !last24h.isEmpty {
                     OverviewSection(
                         title: "完成 last 24h",
                         accent: .secondary,
-                        count: recent.count
+                        count: last24h.count
                     ) {
-                        ForEach(recent) { card in
-                            row(for: card, dot: .green)
+                        ForEach(last24h) { card in
+                            row(for: card, dot: .green, sources: sources)
                         }
                     }
                 }
 
-                let week = doneIn(hoursMin: 24, hoursMax: 24 * 7)
-                if !week.isEmpty {
+                if !last7dExcluding24h.isEmpty {
                     OverviewSection(
                         title: "完成 last 7d",
                         accent: .secondary,
-                        count: week.count,
+                        count: last7dExcluding24h.count,
                         collapsible: true,
                         isExpanded: $showLastWeek
                     ) {
-                        ForEach(week) { card in
-                            row(for: card, dot: .gray)
+                        ForEach(last7dExcluding24h) { card in
+                            row(for: card, dot: .gray, sources: sources)
                         }
                     }
                 }
@@ -87,81 +106,28 @@ struct OverviewView: View {
         }
     }
 
-    @ViewBuilder
-    private func row(for card: Card, dot: Color) -> some View {
+    private func row(for card: Card, dot: Color, sources: [Source]) -> CardChipView {
         CardChipView(
             card: card,
-            projectLabel: labelFor(sourceId: card.sourceId),
+            projectLabel: Self.labelFor(sourceId: card.sourceId, sources: sources),
             dotColor: dot,
-            agentBadge: agentLabel(for: card.sourceId),
+            agentBadge: Self.agentLabel(for: card.sourceId, sources: sources),
             onTap: { onCardTap(card) }
         )
     }
 
-    // MARK: - Combined cards (cardStore + quickTodoStore virtual project)
+    // MARK: - Source resolution (static so views can share without re-loading)
 
-    private var allCards: [Card] {
-        cardStore.cards + quickTodoStore.cards()
-    }
-
-    // MARK: - Aggregates
-
-    private var digestSummary: (doneToday: Int, outstanding: Int, projectsWithOutstanding: Int) {
-        let calendar = Calendar.current
-        let now = Date()
-        let cards = allCards
-        let doneToday = cards.filter { c in
-            guard c.status == .done, let d = c.completedAt else { return false }
-            return calendar.isDate(d, inSameDayAs: now)
-        }.count
-        let outstanding = cards.filter { $0.status == .todo }
-        let projects = Set(outstanding.map { $0.sourceId }).count
-        return (doneToday, outstanding.count, projects)
-    }
-
-    private var urgentCards: [Card] {
-        allCards
-            .filter { $0.status == .todo && CardStore.priority(of: $0) == .urgent }
-            .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
-    }
-
-    private var highCards: [Card] {
-        allCards
-            .filter { $0.status == .todo && CardStore.priority(of: $0) == .high }
-            .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
-    }
-
-    /// Done cards completed between `hoursMin` (exclusive of newer than upper) and
-    /// `hoursMax` (inclusive of older bound) hours ago. Sorted newest-first.
-    private func doneIn(hoursMin: Int, hoursMax: Int) -> [Card] {
-        let now = Date()
-        let upper = now.addingTimeInterval(-Double(hoursMin) * 3600)
-        let lower = now.addingTimeInterval(-Double(hoursMax) * 3600)
-        return allCards
-            .filter { c in
-                guard c.status == .done, let d = c.completedAt else { return false }
-                return d <= upper && d >= lower
-            }
-            .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
-    }
-
-    private var isAllEmpty: Bool {
-        urgentCards.isEmpty && highCards.isEmpty
-            && doneIn(hoursMin: 0, hoursMax: 24).isEmpty
-            && doneIn(hoursMin: 24, hoursMax: 24 * 7).isEmpty
-    }
-
-    // MARK: - Source resolution
-
-    private func labelFor(sourceId: UUID) -> String {
+    static func labelFor(sourceId: UUID, sources: [Source]) -> String {
         if sourceId == QuickTodoConstants.sourceId { return QuickTodoConstants.label }
-        let sources = sourceStore.load()
         return sources.first(where: { $0.id == sourceId })?.label ?? "Unknown"
     }
 
-    private func agentLabel(for sourceId: UUID) -> String? {
+    /// Returns "git" / "pulse" / "claude" / "agents" / "gemini" / "quick" or
+    /// `nil` if the source is missing (deleted but not yet swept; the chip
+    /// simply omits the agent badge in that case).
+    static func agentLabel(for sourceId: UUID, sources: [Source]) -> String? {
         if sourceId == QuickTodoConstants.sourceId { return "quick" }
-        let sources = sourceStore.load()
         guard let s = sources.first(where: { $0.id == sourceId }) else { return nil }
         switch s.kind {
         case .gitLog: return "git"
