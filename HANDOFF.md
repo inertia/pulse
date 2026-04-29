@@ -1,6 +1,6 @@
-# Handoff · last updated 2026-04-29 (v0.3 ship)
+# Handoff · last updated 2026-04-29 (v0.3 + v0.4 ship)
 
-> 換 session 時讀這檔。**v0.3 已完工 single session**：Q3 公開版英文化、Q5-B 快捷鍵補完、Q6 Overview tab + cross-project digest、Q8 menubar icon transparent。下一輪做 **Q4：Settings 管理監控專案**（HANDOFF 已寫好 spec、觀察期已過）。
+> 換 session 時讀這檔。**HANDOFF 列的 Q1~Q8 全部完工**：v0.3 含 Q3 / Q5-B / Q6 / Q7 / Q8；v0.4 含 Q4（Settings 重新掃描 Desktop + RescanWindow）。下一輪沒既定 spec，待 user 拍板新方向。Q4 optional 的「拖檔加專案」尚未做。
 
 ---
 
@@ -159,18 +159,17 @@ git log 不動：仍每次讀 git，commit 顯示為 done card 在 popover「已
 
 下次擴字串的工作流：加一條到 `enum L`（`static let foo = bilingual(zh: "...", en: "...")`），call site 寫 `Text(L.foo)`。動態 interpolation 用 `static func`。
 
-### Q4: Settings → 管理監控專案 — **觀察 1-2 天後做**（2026-04-28 拍板）
+### Q4: Settings → 管理監控專案 — **完工 2026-04-29**（commit `a47d34b`）
 
-現狀（user 痛點）：
-- **個人版**：9 專案 hardcoded 在 `Pulse/Build/Internal.swift`，要砍 / 加只能改 Swift 重 build。日常用沒辦法自己增減。
-- **公開版**：onboarding 第一次掃描勾選後就鎖定；之後沒地方再呼叫一次 scan，只能進 Settings → Sources tab 一條條手動管。
+實際讀現狀架構發現「個人版 hardcoded 蓋掉」需求已內建：`AppDelegate` first-run 用 `HuangSunQuanProjects.materialize()` seed 一次 sources.json，之後 `firstRunCompleted = true`，hardcoded 不再覆蓋。User 在 Sources tab 直接刪 / 改既有 entry 都已 work。
 
-兩版都需要的功能（user 拍板「否則很難用」）：
-- Settings 加「重新掃描 Desktop」按鈕，跳出 onboarding-style 結果視窗讓 user 補勾新專案 / 取消勾舊專案
-- 個人版要能蓋掉 hardcoded list（讓 user 在 UI 改動，不用回 Internal.swift）
-- 拖檔加專案考慮（拖一個資料夾進 popover 直接成 source，跳過掃描）
+所以 Q4 真正缺的只剩「Settings 加重新掃描 Desktop 按鈕」一塊，做完：
+* 新檔 `Pulse/UI/Settings/RescanWindow.swift`：`RescanWindowController` 開 modal + `RescanView` 兩段 phase（scanning → results）；results 階段 reuse 既有 `OnboardingScanResultsView`，只是先 filter 掉已 tracked dirs。
+* `SourcesTab` 加 Rescan 按鈕；新 static `existingDirs(from:)` helper 算「現在 sources.json 涵蓋的 project dirs」（markdown → parent dir，gitLog → dir as-is）；canonical `.path` 字串去重避免 URL trailing-slash 坑。
+* `AppDelegate.sourcesFromOnboarding` 既有 helper 直接 reuse。merge：append 新 sources、不替換既有。
+* 2 個新 unit test 鎖 dedup contract。
 
-先觀察期 1-2 天看實際使用 pain points，再決定 scope。MVP 可能只做「重新掃描」按鈕，個人版 hardcoded list 改成 default 但允許覆寫。
+不做（Q4 optional）：拖檔資料夾進 popover 自動成 source — 觀察 1~2 天若有實際痛點再加。
 
 ### Q5: Popover header dismiss 行為 + 鈕辨識度（**A+B 都完工 2026-04-29**）
 
@@ -331,6 +330,12 @@ open "/Applications/Pulse Internal.app"
 
 ## 重要 commit 序（讀 history 用）
 
+### v0.4 (2026-04-29, Q4)
+
+```
+a47d34b feat(settings): rescan Desktop button + RescanWindow (Q4)
+```
+
 ### v0.3 (2026-04-29, 13 commits)
 
 ```
@@ -381,27 +386,24 @@ a58971b fix(ui): Applications symlink + Quit button (⌘Q)
 
 ## 下個 session 第一個動作
 
-讀完此檔，做 **Q4：Settings 管理監控專案**（HANDOFF 上面已有完整需求段）。MVP 建議：
+HANDOFF 列的 Q1~Q8 全部 ship 完。沒既定 spec 等 user 拍板新方向。
 
-1. Settings 加「重新掃描 Desktop」按鈕，跳出 onboarding-style 結果視窗讓 user 補勾新專案 / 取消勾舊專案
-2. 個人版的 hardcoded list 改成「default 但可覆寫」：UI 上把 hardcoded 顯示為勾選狀態，user 可取消勾或新增其他路徑，覆寫值存到 sources.json
-3. （optional）拖檔加專案：拖一個資料夾進 popover 或 Settings → SourcesTab 直接成 source
+可選的 follow-ups：
 
-不做 runtime locale 切換（已決議 Q3 路線），Q4 新加的字串要：
-- 同步進 `Pulse/Resources/Strings.swift` 的 `enum L`
-- bilingual zh/en 兩條都寫
+1. **Q4 拖檔加專案（optional）** — 拖一個資料夾進 popover 或 SourcesTab 直接成 source，跳過 Rescan 流程。觀察 1~2 天 Rescan 按鈕用得順不順再決定要不要做。
+2. **Code review 殘留 minor nits**（review 報告 §B 𞫿-5/6/8 + 🟢-2/4/5/6）— 都不是 bug，純樣式 / 防禦性微調，刻意沒收進 v0.3。
+3. **dmg release flow 跑一次** — `./Scripts/release.sh` 跑 v0.4 dmg + GitHub release（user 之前說「不要每個小迭代都 release」，下次累積到適當時機）。
 
-驗收：個人版能在 UI 把 9 個 hardcoded 專案改成 8 個，重啟後仍是 8 個（不會被 Internal.swift hardcode 蓋回）。公開版能再次掃描 Desktop 補勾新專案。
+### Ship 過的 Q items（不要再 re-litigate）
 
-### v0.3 已 ship 的 Q items（不要再 re-litigate）
-
-| Q | 描述 | commit |
+| Q | 描述 | ship in |
 |---|---|---|
 | Q1 | pulse.md 完成事項處理機制 | v0.2.0 (`f6b69b3` etc.) |
 | Q2 | 速記寫進專案 | v0.2.0 |
-| Q3 | 公開版英文化 #if INTERNAL_BUILD + Strings.swift | `d7b831f` |
-| Q5-A | click-outside dismiss fix | `b3a6136` |
-| Q5-B | ⌘R / ⌘, keyboardShortcut + tooltip 對齊 | `b1782b6` + `f92b285` |
-| Q6 | Overview tab + cross-project digest（Brand → aggregator → view → wire → tests） | `69936e1` → `15acf44`（9 commits） |
-| Q7 | 已完成 disclosure 處理（隨 Q6） | 同 Q6 |
-| Q8 | Menubar icon 22×22 transparent | `3945700` |
+| Q3 | 公開版英文化 #if INTERNAL_BUILD + Strings.swift | v0.3 (`d7b831f`) |
+| Q4 | Settings 重新掃描 Desktop 按鈕 + RescanWindow | v0.4 (`a47d34b`) |
+| Q5-A | click-outside dismiss fix | v0.2.0 (`b3a6136`) |
+| Q5-B | ⌘R / ⌘, keyboardShortcut + tooltip 對齊 | v0.3 (`b1782b6` + `f92b285`) |
+| Q6 | Overview tab + cross-project digest | v0.3（9 commits） |
+| Q7 | 已完成 disclosure 處理 | 隨 Q6 |
+| Q8 | Menubar icon 22×22 transparent | v0.3 (`3945700`) |

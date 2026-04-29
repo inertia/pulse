@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## v0.4.0：Settings 重新掃描 Desktop (2026-04-29)
+
+### 新增功能
+
+- **Settings → SourcesTab 加「重新掃描 Desktop」按鈕（Q4）**：點開跳 modal，重跑 `AutoSourceDetector` 掃 `~/Desktop` `~/Projects` `~/code` `~/Developer` `~/Documents`，filter 掉 sources.json 已涵蓋的 dirs，剩下用 OnboardingScanResultsView 給 user 勾選新專案。完成後 merge 進既有 sources.json（不替換）。
+- 新檔 `Pulse/UI/Settings/RescanWindow.swift`：`RescanWindowController` + `RescanView`（scanning → results phase machine）。
+- `SourcesTab.existingDirs(from:)` static helper：算「現在 sources.json 涵蓋的 project dirs」（markdown → parent dir，gitLog → dir as-is），canonical `.path` 字串去重。
+
+### 技術重點
+
+- Test suite 194 → 196 green（+2 SourcesTab 測試）。Critical：`testExistingDirs_dedupsAcrossKinds` 鎖 URL trailing-slash 邊界 — `URL.deletingLastPathComponent()` 補 trailing slash 但 `URL(fileURLWithPath:)` 不補，同一 dir 經兩條路徑 hash 進 Set 不相等，dedup 失效。改 Set<String> of `.path` 解。
+- 個人版 Internal hardcoded list 蓋掉需求**已內建**：first-run materialize → save sources.json → `firstRunCompleted = true`，之後 sources.json 為 truth source。User 可在 SourcesTab 直接刪 / 改既有 entry。
+
+### 修正
+
+無（純新增功能）。
+
+### 升級備註
+
+無 schema 變動。直接 build Release-Internal + 替換 /Applications/Pulse Internal.app 即可。
+
+### 已知限制
+
+- Q4 optional 拖檔加專案沒做（觀察 Rescan 按鈕用得順不順再決定）。
+
+---
+
 ## v0.3.0：Overview tab + 公開版英文化 + icon 修整 (2026-04-29)
 
 ### 新增功能
