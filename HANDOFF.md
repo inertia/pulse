@@ -1,16 +1,25 @@
-# Handoff · last updated 2026-04-29
+# Handoff · last updated 2026-04-29 (v0.3 ship)
 
-> 換 session 時讀這檔。Pulse v0.2.0 已 ship；2026-04-29 user 拍板**產品方向**（aggregator 不是 session monitor）+ **stack 不變**（Swift）+ **brand identity 換成 designer spec**（amber pulse spike + slate）+ **下一版 IA shape A**（Overview tab + per-project drill-down）。下一輪做 Q6 Overview tab。
+> 換 session 時讀這檔。**v0.3 已完工 single session**：Q3 公開版英文化、Q5-B 快捷鍵補完、Q6 Overview tab + cross-project digest、Q8 menubar icon transparent。下一輪做 **Q4：Settings 管理監控專案**（HANDOFF 已寫好 spec、觀察期已過）。
 
 ---
 
-## TL;DR — 在哪裡
+## TL;DR — v0.3 狀態
 
-- Pulse v0.2.0 已**裝在** `/Applications/Pulse Internal.app`（個人版）跑著，icon 已換成 designer 的 amber pulse spike
-- repo at `/Users/sunquanhuang/Desktop/pulse/`，**已 push GitHub** (private) `https://github.com/inertia/pulse`
-- Tag `v0.2.0` 指最新（含 Info.plist 版號 baked + designer icon + click-outside dismiss fix）
-- 9 個個人專案（user Desktop 上）已有 `pulse.md` + 8 個 `CLAUDE.md` 加了 hook block，全部 commit 但未 push 到各 repo remote
-- **設計參考**：`/tmp/pulse-handoff/`（designer 提供，user 2026-04-29 給）— 視覺 / brand 採納；session monitoring 產品定位**未採納**
+- 13 commits 在 local main，**未 push origin/main**（user 拍板才推）
+- Pulse v0.3 內部版**已裝**在 `/Applications/Pulse Internal.app`，最新 commit `d7b831f`
+- 194/194 tests green（v0.2.0 ship 時 186 → +5 Q6 baseline → +3 priority/boundary regression → 194）
+- repo at `/Users/sunquanhuang/Desktop/pulse/`，私有 GitHub `https://github.com/inertia/pulse`
+- 9 個個人專案 `pulse.md` + 8 個 `CLAUDE.md` hook block 都在
+- **設計參考**：`/tmp/pulse-handoff/`（designer 2026-04-29 給）— 視覺 / brand 採納；session monitoring 產品定位**未採納**
+
+### v0.3 上線新功能（user 一句話 review 看不出時翻這段）
+
+1. **Overview tab**（最左 pill「總覽」/「Overview」+ outstanding 總數）：跨專案 digest 一句話、🔴 URGENT outstanding、🟡 HIGH outstanding、完成 last 24h、完成 last 7d (disclosure 折疊)。app 啟動時預設選中。
+2. **Priority 偵測**從 title 開頭 emoji 跟 section heading（`### 🔴 URGENT`）兩條路徑都吃。實機 9 專案已驗 17 urgent + 6 high tag 對齊 ground truth。
+3. **公開版 (Pulse.app) 全英文**，個人版 (Pulse Internal.app) 維持中文。compile-time switch via `#if INTERNAL_BUILD`，46 strings 集中在 `Pulse/Resources/Strings.swift`。
+4. **Header 快捷鍵**：⌘, 開 Settings、⌘R 觸發 refresh、⌘Q quit；tooltip 都對齊。Q5-A click-outside dismiss 已 ship。
+5. **Menubar icon** 22×22 透明底（之前 44×22 + 白底）。`Scripts/render-menubar-icon.py` 是 single source of truth。
 
 ---
 
@@ -135,19 +144,20 @@ git log 不動：仍每次讀 git，commit 顯示為 done card 在 popover「已
 
 `+ 快速記` 展開 → 選某專案 → 寫進 `<project>/pulse.md` `## To Do` 段。「📝 只記在 Pulse」= 存 `quick-todos.json`（跨專案 / 雜事）。
 
-### Q3: 公開版英文化 — **下次 session 第一件事**
+### Q3: 公開版英文化 — **完工 2026-04-29**（commit `d7b831f`）
 
-User 拍板：不做 runtime locale 切換，直接 `#if INTERNAL_BUILD` 切兩套字串：
-- 個人版（Internal）：中文 hardcoded（現狀不動）
-- 公開版（Public）：全英文
+實際做的：
+1. ✅ 新增 `Pulse/Resources/Strings.swift`：`enum L { ... }` + private `bilingual(zh:en:)` helper 用 `#if INTERNAL_BUILD` 分流
+2. ✅ 換掉 46 處 user-facing 中文字串 across 14 個 UI 檔（Onboarding / Popover / Overview / QuickTodoComposer / Settings 三 tab / EmptyState / LoadingPlaceholder / ProjectGroup / ProjectTabBar）
+3. ✅ `QuickTodoConstants.label` 改 computed `var` 透過 `L.quickProjectLabel`：Internal「📝 快速記」/ Public「📝 Quick」。sourceId 是固定 UUID，cards-cache.json 跨 build 不會崩
+4. ✅ Overview URGENT/HIGH 標題保留 emoji + 英文（兩 build 共用，emoji 跨語）
+5. ✅ Build verified：Debug-Internal + Debug-Public 都 SUCCEEDED；194/194 tests green
 
-要做：
-1. 建 `Pulse/Resources/Strings.swift`（集中所有 user-facing 字串）
-2. 每個字串 `#if INTERNAL_BUILD ... #else ...`
-3. 重新 build 公開版 dmg
-4. 預估 1-2 小時
+不動的：
+- `Build/Internal.swift` 9 個 hardcoded 專案 label：本來就在 `#if INTERNAL_BUILD` 內，public build 沒這份 list
+- SectionHeading / NumberedSection / EmojiCheckmark strategies 的「待辦」/「已完成」keyword：那是 ingest 比對 user pulse.md heading 用，跟 build 無關，兩個 token 都該收
 
-要動的字串約 30-50 條：popover header / footer / tab / pills / QuickTodoComposer / OnboardingView / Settings tabs / EmptyStateView / LoadingPlaceholderView。pulse.md 的 header 文字也要決定（兩語都接受 vs 只英文）。
+下次擴字串的工作流：加一條到 `enum L`（`static let foo = bilingual(zh: "...", en: "...")`），call site 寫 `Text(L.foo)`。動態 interpolation 用 `static func`。
 
 ### Q4: Settings → 管理監控專案 — **觀察 1-2 天後做**（2026-04-28 拍板）
 
@@ -162,57 +172,45 @@ User 拍板：不做 runtime locale 切換，直接 `#if INTERNAL_BUILD` 切兩�
 
 先觀察期 1-2 天看實際使用 pain points，再決定 scope。MVP 可能只做「重新掃描」按鈕，個人版 hardcoded list 改成 default 但允許覆寫。
 
-### Q5: Popover header dismiss 行為 + 鈕辨識度（2026-04-28 user 回報，**part A 完工 2026-04-29**）
+### Q5: Popover header dismiss 行為 + 鈕辨識度（**A+B 都完工 2026-04-29**）
 
-User 回報「打開以後關掉鈕（⏻ Quit）比較明顯，但另一個『收起』小按鍵不太容易直接感覺到，很像設定的按鈕。本來以為離開視窗按別的地方就會自動收起，但結果沒有」。
+**A. Click-outside 不會 dismiss**：commit `b3a6136`（Q5-A）。原因是 `togglePopover()` show 完緊接 `NSApp.activate(ignoringOtherApps: true)`，吃掉 .transient 失焦訊號。fix = 拿掉 `NSApp.activate` 那行；popover SwiftUI 自己處理 keyboard event 不受影響。
 
-**A. Click-outside 不會 dismiss — 已修（2026-04-29，icon swap commit 一起）**：原因是 `togglePopover()` show 完緊接 `NSApp.activate(ignoringOtherApps: true)`，吃掉 .transient 失焦訊號。fix = 拿掉 `NSApp.activate` 那行；popover SwiftUI 自己處理 keyboard event 不受影響。
+**B. Header 三鈕語意混淆 — 縮 scope 解**（commits `b1782b6` + `f92b285`）：
+- 只加 `.keyboardShortcut("r", modifiers: .command)` 到 Refresh 按鈕 + tooltip "Refresh now" → "Refresh (⌘R)"
+- 加 `.keyboardShortcut(",", modifiers: .command)` 到 Settings 按鈕（之前 tooltip 寫 (⌘,) 但沒實際 wire；LSUIElement 無 menubar 不會 auto-route）
+- ⏻ 跟 ⌘Q binding 維持原樣（user 原話「⏻ Quit 比較明顯」，沒換 power.circle）
+- 沒加額外 chevron 收起鈕：A 修完 click-outside 已能 dismiss，多塞按鈕反而是噪音
 
-**B. Header 三鈕語意混淆**（仍待做）：⚙️ gear / 🔄 arrow.clockwise / ⏻ power — user 把 ⏻ 認成「關閉」（其實是 Quit 整個 app），把 ⚙️ 誤認成「收起」。Q6 Overview tab 落地時順便解：
-- 加一顆明確的「收起 popover」鈕（chevron.up / xmark）
-- 或：⏻ 改 icon + label，更明顯是「離開 app」
-- 或：拿掉 ⏻，靠 ⌘Q 即可（既然 A 修了，user 也很少需要 ⏻ 主動退出）
+HANDOFF Q5-B 原列三 a/b/c 候選，最終選最 minimal 的「補快捷鍵 + 對齊 tooltip」。
 
-### Q6: Overview tab — 跨專案 digest（**下一輪重點，2026-04-29 拍板**）
+### Q6: Overview tab — 跨專案 digest（**完工 2026-04-29**，commits `69936e1` → `15acf44`）
 
-User 觀察 v0.2 IA 不對：「跨專案 review」現在被切成 9 個 per-project tab，方向反了。Designer spec 雖然產品定位錯，但 status-grouped + 每張卡掛 project chip 的 IA shape 對 review 是對的方向。
+實作完成 9 commits 跑完 Shape A：
+1. ✅ `Pulse/Brand/Colors.swift`：amber `#ffa940` / amberDeep / slate `#1a1f2e` / surface2
+2. ✅ `Pulse/Core/CardStoreAggregates.swift`：static `filterCards` / `cardsCompletedWithin` / `digest` 三個 helpers + instance wrapper（3 ways）
+3. ✅ `Pulse/UI/Overview/`：OverviewView / DigestLineView / OverviewSection / CardChipView / Format.swift
+4. ✅ `PopoverContentView` 整合：`selectedLabel: String? = ProjectTabBar.overviewLabel`，body 入口 once 算 cards / sources / 各 section，再 pass 給 row
+5. ✅ `ProjectTabBar`：左側 inject Overview pseudo-pill，icon `square.grid.2x2.fill` + label「總覽」/「Overview」+ outstanding badge
+6. ✅ Tests：CardStoreTests 加 4 cases（filtersByStatus / filtersByPriority / filtersByPriority_fromSyntheticTag / digestSummary_countsCorrectly）+ doneCardsLast 邊界 + halfOpenBoundary；OverviewViewTests 加 sentinel test。190 → 194。
 
-**Shape A 設計**：
-- ProjectTabBar 最左加 **Overview** tab，預設選中 first-launch + 之後
-- Overview view 內容（從上到下）：
-  1. **Digest 一句話**：`今天完成 N 件 / outstanding M 件 / X 個專案有東西未完成`（用 designer amber 強調）
-  2. **🔴 URGENT outstanding**（cross-project，每張卡 = project chip + age + 文字）
-  3. **🟡 HIGH outstanding**（同上）
-  4. **完成 last 24h**（git commit + pulse.md `- [x]` 並列；project chip + 時間 stamp + agent label「git / pulse」）
-  5. **完成 last 7d**（disclosure 折疊；點開 chronological list）
-- Per-project tabs 留作 drill-down，不變
-- Card pattern 借 designer：bg-stone-100/zinc-800 等價、dot indicator（emerald = done、amber = urgent）、font-mono for project name + dates、tabular-nums for counts
+**v0.3 踩到的關鍵坑（有獨立查核才發現）**：實機 9 專案 `pulse.md` 用 `### 🔴 URGENT / P0` heading + bullet 不帶 emoji，原本 `card.title.hasPrefix("🔴")` 完全抓不到。修法：`MultiStrategyMarkdownParser.normalize()` 從 `item.sectionHeading` 偵測 🔴/🟡 注入 `priority-urgent`/`priority-high` synthetic tag。`priority(of:)` 同時看 title prefix + tag。Cache schema 不動（schema v1 維持）。
 
-**新增 Swift 元件**（推估）：
-- `OverviewView.swift` — root，組合 digest + 4-5 sections
-- `DigestLineView.swift` — 一句話 summary，從 cardStore aggregate
-- `CardChipView.swift` — 通用卡，project chip + age + dot 配色
-- `lib/Format.swift` — `formatElapsed(_:)` / `formatRelative(_:)` / `formatCount(_:)` 對應 designer helper
-- `Pulse/Brand/Colors.swift`（新檔）— `Brand.amber` `#ffa940` / `Brand.slate` `#1a1f2e` 等 token
+驗證：cards-cache.json grep `priority-urgent` = 17 / grep `priority-high` = 6，跟 ground truth 對齊（heterotopias 5+6, 矽盾週報 12+0）。
 
-**選 A 不選 B 的原因**：reuse 現有 ProjectTabBar / CardRowView component；漸進演化；用一陣子若 per-project tab 沒人點再升級 B（廢 tab）。
+**24h ↔ 7d boundary 不重疊**：`cardsCompletedWithin(_:hoursAgoLower:hoursAgoUpper:)` 用 half-open `(lower, upper]` 區間。Last 24h（lower=24, upper=0）跟 last 7d but not last 24h（lower=168, upper=24）對於完成於剛好 24h 前的卡只有後者收，前者跳過。
 
-預估：2-3 天工作量。執行 order：tokens / Brand → OverviewView 殼 → digest line → URGENT/HIGH section → done sections → 整合 first-launch 預設 → 跑 tests（既有 186 + Overview 至少 5 cases）。
+### Q7: 已完成軸的處理 — **完工 2026-04-29**（隨 Q6）
 
-### Q7: 已完成軸的處理（伴隨 Q6）
+Per-project tab 仍維持 `已完成 (N) ▼` disclosure 折疊；Overview 內：last 24h 預設展開、last 7d 折疊（cross-project chronological，期待用 per-project drill-down 看細節）。
 
-現在 `已完成 (N) ▼` 是 per-project + collapsed by default。「review 跨專案」場景下這是反的：done 軸應該是 review 主角，不該藏起來。Q6 Overview 落地後，per-project tab 內的 disclosure 仍然保留（drill-down 場景合理藏起），但 Overview 內 done 是預設展開、cross-project chronological。
+### Q8: Menubar icon — **完工 2026-04-29**（commit `3945700`）
 
-### Q8: Menubar icon 細節（**下輪一次解**，2026-04-29 user 回報）
+修了 HANDOFF Q8 列的兩件事（candidate c：a+b 都做）：
+1. ✅ artboard 改回 22×22；path 重新縮放到 `M 2,11 L 7,11 L 9,3 L 11,19 L 13,3 L 15,11 L 20,11`
+2. ✅ render pipeline 改用 PIL（`Scripts/render-menubar-icon.py`）直接畫透明底 PNG，不走 qlmanage（會加白底）。22×22 跟 44×44（@2x）兩張，stroke 黑色 alpha=255、其他 pixel alpha=0。Verified 21.7% / 16.0% opaque、四角 RGBA(0,0,0,0)。
 
-User 在綠色森林桌布上看 menubar，覺得 icon「白底有點巨大」。Inspect 後兩件事：
-1. **`menubar_44.png` 角落 pixel = `(255, 255, 255, 255)` 白色 opaque** — qlmanage 輸出 SVG 雖然 stroke-only 但 PNG 帶白底。應該全透明 + 黑色 stroke，才能讓 macOS template 機制把白色背景當「無」、只 tint stroke。
-2. **44×22 viewBox 比 22×22 寬一倍** — designer SVG 跟 spec 文字不一致（spec 寫 22×22 artboard，SVG 是 44×22）；NSStatusItem.variableLength 吃 icon 寬度，所以 menubar slot 變得比一般 22pt 寬一倍。
-
-**Q8 fix 候選**（user 說下輪一起解）：
-- a) 把 SVG 改回 22×22 artboard，path 重新縮放到 (M 2,11 L 7,11 L 9,3 L 11,19 L 13,3 L 15,11 L 20,11)，stroke-width 1.6 不變
-- b) 渲染 pipeline 改用 rsvg-convert 或 Chrome headless，透明背景才會保留（qlmanage 對 stroke-only SVG 加白底是 macOS Quick Look 默認行為）
-- c) 兩個都做（a 解大小、b 解透明）→ 最徹底
+下次要動 icon shape：改 `Scripts/render-menubar-icon.py` 的 `PULSE_POINTS` / `stroke`，跑 `python3 Scripts/render-menubar-icon.py` 即可。
 
 ---
 
@@ -318,21 +316,58 @@ open "/Applications/Pulse Internal.app"
 | NumberedSectionStrategy 把 URGENT/HIGH/MEDIUM 段抓進來太雜 | 從 default 拿掉，需要時 explicit pass strategies init |
 | 9 專案大多數沒 `## To Do` 段，markdown ingest 抓不到 todo | bootstrap subagent 平行掃所有 audit/docs/memory 整理進 pulse.md |
 
+## v0.3 開發中踩過的坑（避免重複）
+
+| 坑 | 對策 |
+|---|---|
+| Plan §風險 row 寫了「先驗 fixture 真的含 🔴」但實際沒驗，Q6 ship 完發現 9 專案 URGENT/HIGH section 全空 | 規劃文件每個 mitigation row 開戰前轉 TodoWrite 條目，跑完才敢宣告完工。Code review 找 ground-truth 對照（cards-cache.json grep priority tag = 17 urgent + 6 high 對齊 real pulse.md） |
+| Settings tooltip 寫「(⌘,)」但沒實際 wire `.keyboardShortcut(",", modifiers: .command)` | LSUIElement apps 沒預設 menu bar，SwiftUI Settings scene auto-wire 不會 fire；popover 內按鈕必須自己接 keyboardShortcut 才生效。tooltip 跟 binding 拆兩件事看 |
+| OverviewView 每 render 算 6 次 allCards / 2N 次 sourceStore.load() | body 入口 `let cards = ...; let sources = ...` 一次 cache，pass 給 row helper。設計時就要想 SwiftUI 不 memoize computed property |
+| 24h ↔ 7d 時間區間 inclusive 兩邊會在剛好 24h 邊界 double count | 用 half-open `(lower, upper]`：`d > lower && d <= upper`。Static helper 接 `hoursAgoLower:hoursAgoUpper:` 兩參數 |
+| qlmanage 渲染 stroke-only SVG 加白底 | 不要走 qlmanage；用 PIL（`Scripts/render-menubar-icon.py`）或 rsvg-convert 直接畫透明 PNG，opaque pixels 只在 stroke |
+| 5 個破折號（——）混進 commit body | CLAUDE.md §1 HARD RULE 自撰段落禁用破折號；起草時就不寫，不要等 review 才回頭改 |
+
 ---
 
 ## 重要 commit 序（讀 history 用）
 
+### v0.3 (2026-04-29, 13 commits)
+
 ```
+d7b831f feat(i18n): Public build switches to English via #if INTERNAL_BUILD (Q3)
+3945700 fix(menubar): rerender icon to 22×22 transparent (Q8 a+b)
+15acf44 refactor(overview): static aggregator helpers + half-open boundary + cache-per-render
+f92b285 fix(header): wire ⌘, keyboardShortcut to Settings button (review §B 🔴-1)
+9d98857 fix(overview): derive priority from section heading, not just title prefix
+97b4f11 test(overview): aggregate + sentinel-label coverage (+5 cases)
+b1782b6 fix(header): wire ⌘R keyboard shortcut + tooltip on Refresh button (Q5-B)
+dd7948e feat(overview): wire Overview as default tab in PopoverContentView + ProjectTabBar
+7dcf1b6 feat(overview): OverviewView + DigestLine + Section + CardChip components
+6b6304e feat(overview): cross-project aggregator helpers in CardStore
+69936e1 feat(brand): introduce Brand color tokens (designer amber/slate)
+1d2f317 docs(handoff): Q8 menubar icon 白底 + 過大（下輪一起解）
+f09f453 docs(handoff): v0.3 direction record — aggregator, no rewrite, Shape A IA
+```
+
+### v0.2 (2026-04-28)
+
+```
+b3a6136 fix(popover): drop NSApp.activate so .transient click-outside dismiss works (Q5-A)
+a03ffe4 feat(brand): adopt designer pulse-spike icon (app + menubar template)
+0851abb build: bake MARKETING_VERSION 0.2.0 + CURRENT_PROJECT_VERSION into xcconfig
 5fbfe35 chore(hooks): one-shot script to sync existing CLAUDE.md hook blocks
 5dcb462 test(maintenance): unit cover cleanLines + cleanAgedDoneItems
 2624d1e feat(maintenance): sweep aged `- [x] (done ...)` lines from pulse.md on refresh
 f6b69b3 feat(hook): add done/delete trigger phrases to CLAUDE.md hook block
-8c766a3 docs: handoff for next session — Q1 done mechanism + Q3 English public version
 b47f06a feat(hook): expanded CLAUDE.md hook with trigger-phrase rules
 67b17e8 chore(ingest): git log cutoff 14 → 30 days per user
 46acd02 feat(detect): pulse.md added to auto-detection convention; 9-project bootstrap done
 10048e1 feat(pulse-md): rename PULSE_QUICK.md → pulse.md + auto-write CLAUDE.md hook
-bd5998f feat(ui): quick todo can target a project, writes to PULSE_QUICK.md
+```
+
+### v0.1 (older, foundational)
+
+```
 6ec3459 feat(v0.1): board UI + quick todos + 14d git cutoff + drop NumberedSectionStrategy
 9d7cb87 fix(build): split PRODUCT_NAME (Pulse Internal vs Pulse)
 a58971b fix(ui): Applications symlink + Quit button (⌘Q)
@@ -340,51 +375,33 @@ a58971b fix(ui): Applications symlink + Quit button (⌘Q)
 5f17417 docs: CHANGELOG + README + HANDOFF for v0.1.0
 ```
 
-`git log --oneline -20` 可看更全。
+`git log --oneline -30` 可看更全。
 
 ---
 
 ## 下個 session 第一個動作
 
-讀完此檔。先做 Q6 Overview tab（2-3 天工作量，是 v0.3 重點），Q3 英文化降為 Q6 之後：
+讀完此檔，做 **Q4：Settings 管理監控專案**（HANDOFF 上面已有完整需求段）。MVP 建議：
 
-### Q6 step-by-step（推薦執行 order）
+1. Settings 加「重新掃描 Desktop」按鈕，跳出 onboarding-style 結果視窗讓 user 補勾新專案 / 取消勾舊專案
+2. 個人版的 hardcoded list 改成「default 但可覆寫」：UI 上把 hardcoded 顯示為勾選狀態，user 可取消勾或新增其他路徑，覆寫值存到 sources.json
+3. （optional）拖檔加專案：拖一個資料夾進 popover 或 Settings → SourcesTab 直接成 source
 
-1. **Brand tokens 落地**：建 `Pulse/Brand/Colors.swift`：
-   ```swift
-   enum Brand {
-     static let amber = Color(red: 1.0, green: 0.663, blue: 0.251)   // #ffa940
-     static let amberDeep = Color(red: 0.78, green: 0.4, blue: 0.05)  // dark mode 補強對比
-     static let slate = Color(red: 0.102, green: 0.122, blue: 0.18)   // #1a1f2e
-     static let surface2 = Color(NSColor.controlBackgroundColor)      // designer surface-2 對應
-   }
-   ```
-2. **OverviewView 殼**：建 `Pulse/UI/Overview/OverviewView.swift` + 子件 `DigestLineView` / `OverviewSection` / `CardChipView`
-3. **PopoverContentView 整合**：在 `ProjectTabBar` 之前 inject `Overview` tab；`selectedLabel` 預設邏輯改成「if 沒選過 → Overview」
-4. **Cross-project aggregator**：在 `cardStore` 加 helper（不破壞既有 per-project 接口）：
-   - `cardsAcrossProjects(status: .todo, priority: .urgent)` → [Card]
-   - `doneCardsLast(hours: 24)` → [Card] (mix git commit + pulse.md done)
-   - `digestSummary()` → `(doneToday: Int, outstanding: Int, projectsWithOutstanding: Int)`
-5. **Tests**：新增 `OverviewViewTests.swift` + `CardStoreAggregateTests.swift`（至少 5 cases — empty / single project / cross-project / urgent filter / done last 24h）
-6. **跑 ./Scripts/run-tests.sh** — 期望 186 + 5 = 191 green
-7. **Build Release-Internal + install + manual eyeball**：
-   - Overview tab 是不是預設選中
-   - Digest 一句話正確
-   - URGENT / HIGH section 跨專案顯示（現有 9 專案 cards 應該分布在多 section）
-   - 完成 last 24h 包含 git commit + pulse.md `[x]`
-   - Per-project tab 點進去依然可看細節
-8. **Commit 拆分**（per HARD RULE §0）：
-   - `feat(brand): introduce Brand color tokens (designer amber/slate)`
-   - `feat(overview): cross-project aggregator helpers in CardStore`
-   - `feat(overview): OverviewView + DigestLine + Section + Card components`
-   - `feat(overview): wire Overview as default tab in PopoverContentView`
-   - `test(overview): aggregate + view tests`
+不做 runtime locale 切換（已決議 Q3 路線），Q4 新加的字串要：
+- 同步進 `Pulse/Resources/Strings.swift` 的 `enum L`
+- bilingual zh/en 兩條都寫
 
-### Q5-B（順便做）
+驗收：個人版能在 UI 把 9 個 hardcoded 專案改成 8 個，重啟後仍是 8 個（不會被 Internal.swift hardcode 蓋回）。公開版能再次掃描 Desktop 補勾新專案。
 
-- Q6 整合 PopoverContentView 時順便處理 header 三鈕語意 — 拿掉 ⏻（靠 ⌘Q），或把 ⏻ 改 icon + tooltip 強化「Quit Pulse」語意；⚙️ 維持 Settings；🔄 維持 Refresh
+### v0.3 已 ship 的 Q items（不要再 re-litigate）
 
-### Q3 / Q4（推遲）
-
-- Q3 英文化 = Q6 落地後做（順便把 Overview 字串也搬進 L enum，一次到位）
-- Q4 Settings 增刪專案 = Q3 之後做（觀察期已過，user 痛點若仍存在再做）
+| Q | 描述 | commit |
+|---|---|---|
+| Q1 | pulse.md 完成事項處理機制 | v0.2.0 (`f6b69b3` etc.) |
+| Q2 | 速記寫進專案 | v0.2.0 |
+| Q3 | 公開版英文化 #if INTERNAL_BUILD + Strings.swift | `d7b831f` |
+| Q5-A | click-outside dismiss fix | `b3a6136` |
+| Q5-B | ⌘R / ⌘, keyboardShortcut + tooltip 對齊 | `b1782b6` + `f92b285` |
+| Q6 | Overview tab + cross-project digest（Brand → aggregator → view → wire → tests） | `69936e1` → `15acf44`（9 commits） |
+| Q7 | 已完成 disclosure 處理（隨 Q6） | 同 Q6 |
+| Q8 | Menubar icon 22×22 transparent | `3945700` |

@@ -1,5 +1,51 @@
 # CHANGELOG
 
+## v0.3.0：Overview tab + 公開版英文化 + icon 修整 (2026-04-29)
+
+### 新增功能
+
+- **Overview tab（Q6）**：ProjectTabBar 最左加「總覽」/「Overview」pseudo-pill，app 啟動時預設選中。內容：
+  - 一句話 digest「今天完成 N　outstanding M　X 個專案待處理」（amber 強調 outstanding）
+  - 🔴 URGENT outstanding section（cross-project，每張卡 = dot indicator + project chip + agent badge + relative age）
+  - 🟡 HIGH outstanding section（同上）
+  - 完成 last 24h（git commit + pulse.md `[x]` 並列；agent badge 區分 git / pulse / claude / agents / gemini / quick）
+  - 完成 last 7d（disclosure 折疊，預設關；點開 chronological list；24h ↔ 7d 邊界用 half-open `(lower, upper]` 不重疊）
+- **Priority 偵測（Q6）**：兩條路徑同時吃。Title 開頭 `🔴`/`🟡` emoji；section heading 含 `🔴`/`🟡`（`### 🔴 URGENT / P0`）由 `MultiStrategyMarkdownParser.normalize()` 注入 `priority-urgent`/`priority-high` synthetic tag。Cache schema v1 不動。
+- **Brand tokens**：`Pulse/Brand/Colors.swift` 落地 designer pulse-handoff 主色（amber `#ffa940` / amberDeep / slate `#1a1f2e` / surface2）。Q6 元件統一從這 reference。
+- **公開版英文（Q3）**：個人版 (Pulse Internal.app) 維持中文，公開版 (Pulse.app) 全英文。compile-time switch via `#if INTERNAL_BUILD`。46 處 user-facing string 集中在 `Pulse/Resources/Strings.swift`（`enum L` + private `bilingual(zh:en:)`）。
+- **Header 快捷鍵補完（Q5-B）**：`.keyboardShortcut("r", modifiers: .command)` 補上 Refresh、`.keyboardShortcut(",", modifiers: .command)` 補上 Settings。Tooltips 對齊 ⌘R / ⌘, / ⌘Q。click-outside dismiss（Q5-A）已在 v0.2 final ship。
+
+### 技術重點
+
+- Test suite 186 → 194 green
+  - 5 cases for Q6 baseline aggregator + sentinel
+  - 1 case for priority-from-synthetic-tag detection（CardStoreTests）
+  - 1 case for priority-from-section-heading injection（MultiStrategyMarkdownParserTests）
+  - 1 case for half-open boundary on chained 24h/7d windows
+- `CardStore` extension 拆 static helpers (`filterCards` / `cardsCompletedWithin` / `digest`) + instance wrapper：靜態接受 `[Card]` 給 OverviewView 合併 cardStore + quickTodoStore，instance 給單元測試
+- OverviewView body 入口 once cache `cards` 跟 `sources`，row helpers 接 `sources` 參數，避免 N 卡的場景 2N 次 disk read
+
+### 修正
+
+- **Menubar icon 白底巨大（Q8）**：之前 `menubar_44.png` 是 88×44 pixel + 四角 RGBA(255,255,255,255) opaque white（qlmanage 對 stroke-only SVG 補白底是 macOS Quick Look 默認行為）。改 22×22 viewBox + PIL 直接畫透明底 PNG（`Scripts/render-menubar-icon.py`）。
+- **Code review 抓的 2 BUG**：
+  - Settings tooltip 寫「(⌘,)」但沒實際 wire keyboardShortcut（補上）
+  - URGENT/HIGH section 在實機 9 專案 pulse.md 全部空，因 emoji 在 section heading 不在 bullet（加 section-heading-derived tag）
+
+### 升級備註
+
+- 個人版升級：build Release-Internal + cp 到 /Applications，cards-cache.json schema 不動，sources.json 不動。app 重啟後 RefreshScheduler 會重 parse 跑出新的 priority tag。
+- 公開版升級：build Release-Public dmg。`#if INTERNAL_BUILD` 自動切 English；既有 user 升級時 cards-cache.json 會被 normalized priority tag 取代（cache key 一樣，schema 一樣）。
+- v0.2 → v0.3 沒有 manual migration 步驟。
+
+### 已知限制
+
+- 個人版 9 專案還是 hardcoded 在 `Internal.swift`，要砍 / 加只能改 Swift 重 build（v0.4 Q4 補 Settings 增刪專案）
+- 公開版 onboarding 後沒地方再重掃 Desktop（v0.4 Q4 補）
+- Overview tab 只看 priority；medium / 🟢 / 無 emoji 的 todo 不在 URGENT/HIGH section（會散在 per-project tab）
+
+---
+
 ## v0.2.0：todo lifecycle 補完 (2026-04-28)
 
 ### 新增功能
