@@ -45,7 +45,7 @@ Built for developers who use AI coding assistants (Claude Code, Codex, Cursor, G
   - `Sources` — add / remove / toggle markdown and git sources.
   - `Filters` — pick a git commit filter preset (`Minimal` = `feat`/`fix` only, `Recommended`, `All`).
   - **Rescan Desktop** — find new projects added since onboarding.
-- **Auto-refresh** — markdown sources update via `FSEventStream` with a 1-second debounce; git logs are scanned every 5 minutes as a backstop.
+- **Auto-refresh** — every source is watched via `FSEventStream` with a 1-second debounce. Markdown sources fire on file save; git sources fire when `.git/logs/HEAD` is appended (i.e., on every commit / merge / reset). A one-hour timer runs in the background as a defensive backstop, but in practice the popover updates within ~1.5 seconds of any change.
 - **Keyboard** — `⌘,` Settings, `⌘R` Refresh, `⌘Q` Quit.
 
 ## Supported sources

@@ -12,6 +12,7 @@ final class RefreshScheduler: ObservableObject {
     @Published var loadingProgress: (done: Int, total: Int) = (0, 0)
 
     private var timerTask: Task<Void, Never>?
+    private var watchers: [UUID: FileWatcher] = [:]
 
     init(sourceStore: SourceStore = SourceStore(),
          cardStore: CardStore,
@@ -23,30 +24,39 @@ final class RefreshScheduler: ObservableObject {
         self.settings = settings
     }
 
-    /// Called on app launch. Runs initial refresh + starts 5-min timer.
+    /// Called on app launch. Runs initial refresh, installs per-source FSEvent
+    /// watchers (markdown files + each git repo's `.git/logs/HEAD`), and starts
+    /// a 1-hour backstop timer. Most refreshes happen via FSEvents within ~1.5s
+    /// of a file change; the hourly timer is just defence against edge cases
+    /// (network filesystems, missed events, sources added but watcher install failed).
     func start() async {
         await forceRefresh()
+        installWatchers()
         timerTask?.cancel()
         timerTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 5 * 60 * 1_000_000_000)   // 5 min
+                try? await Task.sleep(nanoseconds: 60 * 60 * 1_000_000_000)   // 1 hour
                 if Task.isCancelled { break }
                 await self?.forceRefresh()
             }
         }
     }
 
-    /// Stop the periodic timer (e.g., on app shutdown / for tests).
+    /// Stop the periodic timer + tear down FSEvent watchers.
     func stop() {
         timerTask?.cancel()
         timerTask = nil
+        teardownWatchers()
     }
 
-    /// Refresh all enabled sources. Updates isLoading + loadingProgress.
+    /// Refresh all enabled sources. Updates isLoading + loadingProgress. Also
+    /// re-installs FSEvent watchers so newly-added sources start being tracked
+    /// without an app restart.
     func forceRefresh() async {
         let sources = sourceStore.load().filter { $0.enabled }
         guard !sources.isEmpty else {
             lastRefreshAt = Date()
+            installWatchers()
             return
         }
         isLoading = true
@@ -72,6 +82,62 @@ final class RefreshScheduler: ObservableObject {
             .filter { $0.path.lastPathComponent == "pulse.md" }
             .map { $0.path }
         PulseFileMaintenance.cleanAgedDoneItems(pulseURLs: pulseURLs)
+
+        // Re-install watchers in case the source list changed (rescan / add /
+        // remove) since last call. Cheap operation — watchers are kernel objects.
+        installWatchers()
+    }
+
+    // MARK: - FSEvent watchers
+
+    /// (Re)install one FileWatcher per enabled source. Existing watchers are
+    /// torn down first, so this is idempotent and safe to call from any path
+    /// that mutates the source list.
+    ///
+    /// Watch targets:
+    /// * `claudeMd` / `agentsMd` / `geminiMd`: the markdown file itself
+    ///   (FileWatcher monitors its parent dir under the hood, so atomic-rename
+    ///   editors are handled).
+    /// * `gitLog`: the repo's `.git/logs/HEAD`, which appends a line on every
+    ///   commit / merge / reset on HEAD. More reliable than `.git/HEAD`
+    ///   (which only changes on branch switch) and `.git/refs/heads/<branch>`
+    ///   (which requires knowing the current branch name and fails on detached
+    ///   HEAD). If the file doesn't exist (uncommitted repo) the watcher is
+    ///   created against the parent dir anyway and will fire when the file
+    ///   first appears.
+    private func installWatchers() {
+        teardownWatchers()
+        let sources = sourceStore.load().filter { $0.enabled }
+        for source in sources {
+            let watchURL: URL
+            switch source.kind {
+            case .claudeMd, .agentsMd, .geminiMd:
+                watchURL = source.path
+            case .gitLog:
+                watchURL = source.path
+                    .appendingPathComponent(".git")
+                    .appendingPathComponent("logs")
+                    .appendingPathComponent("HEAD")
+            }
+            let sourceId = source.id
+            let watcher = FileWatcher(fileURL: watchURL) { [weak self] in
+                Task { @MainActor in
+                    guard let self = self else { return }
+                    if let s = self.sourceStore.load().first(where: { $0.id == sourceId }) {
+                        await self.refresh(s)
+                    }
+                }
+            }
+            watcher.start()
+            watchers[source.id] = watcher
+        }
+    }
+
+    private func teardownWatchers() {
+        for (_, watcher) in watchers {
+            watcher.stop()
+        }
+        watchers.removeAll()
     }
 
     /// Refresh a single source (used by FSEvents trigger in Task 24).
