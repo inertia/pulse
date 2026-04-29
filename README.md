@@ -143,6 +143,33 @@ You can verify the read-only contract by running `./Scripts/verify-readonly.sh` 
 
 Pulse does not phone home, does not collect telemetry, and does not require a network connection.
 
+## Troubleshooting: "Pulse keeps asking for Desktop access every few minutes"
+
+This happens because Pulse is ad-hoc signed (no Apple Developer ID, since this project deliberately avoids the $99/year fee). macOS treats per-folder access grants (`~/Desktop`, `~/Documents`, etc.) as conditional on a stable code signature; ad-hoc rebuilds and certain refresh patterns can cause the system to re-prompt.
+
+Two fixes — pick one.
+
+**Option 1: reset the grant and don't rebuild**
+
+```bash
+tccutil reset SystemPolicyDesktopFolder com.huangsunquan.pulse
+```
+
+Restart Pulse from `/Applications`, click *OK* on the prompt that appears. The permission is sticky for the lifetime of that binary. If you later rebuild from source the prompt may return on first launch — accept once and it sticks again.
+
+**Option 2: grant Full Disk Access (recommended)**
+
+This bypasses per-folder TCC entirely.
+
+1. Open *System Settings → Privacy & Security → Full Disk Access*
+2. Click `+`, browse to `/Applications/Pulse.app`, add it
+3. Enable the toggle next to its row
+4. Quit and relaunch Pulse
+
+The grant is sticky regardless of code signature changes, so you'll never see the prompt again. The trade-off: Pulse can technically read any file on disk. Pulse is open source — you can verify it only reads markdown checkboxes and `git log` — but if that scope is not acceptable, stick with Option 1.
+
+Most other menubar developer tools (Stats, Rectangle, iStatsMenus) ask for Full Disk Access for the same reason.
+
 ## System requirements
 
 - macOS 14 Sonoma or later
@@ -254,6 +281,35 @@ Pulse **不會修改**所追蹤之 `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` 或�
 Pulse 不上傳任何資料至雲端，無 telemetry 蒐集機制，亦不需網路連線。
 
 如欲驗證唯讀契約，可執行 `./Scripts/verify-readonly.sh`（需事先以 `brew install jq` 安裝相依套件）。
+
+### 疑難排解：Pulse 每隔數分鐘反覆請求檔案存取權限
+
+由於 Pulse 採 ad-hoc 簽章（為避免 Apple Developer 年費 99 美元而刻意如此），macOS 對於 `~/Desktop`、`~/Documents` 等資料夾的逐項授權，僅在程式碼簽章穩定時方為有效；ad-hoc 重新編譯與部分刷新行為可能反覆觸發系統提示。
+
+以下兩種解法擇一即可。
+
+**解法一：重置授權並避免重新編譯**
+
+於終端機執行：
+
+```bash
+tccutil reset SystemPolicyDesktopFolder com.huangsunquan.pulse
+```
+
+於 `/Applications` 重新啟動 Pulse，於彈出之對話框點選「好」。本次安裝期間授權將持續有效；若日後自原始碼重新編譯，首次啟動或再次觸發提示，再次接受即可。
+
+**解法二：授予完整取用磁碟權限**（建議）
+
+此方式可完全繞過逐資料夾 TCC 機制。
+
+1. 開啟「系統設定 → 隱私與安全性 → 完整取用磁碟」
+2. 點選 `+`，瀏覽至 `/Applications/Pulse.app` 並加入
+3. 啟用該項目之開關
+4. 結束 Pulse 並重新啟動
+
+此授權與程式碼簽章變動無關，將永久有效。權衡之處在於：Pulse 將取得讀取磁碟所有檔案之權限。本應用為開源軟體，原始碼可供驗證實際僅讀取 markdown checkbox 與 `git log` 內容；惟若使用者不接受此授權範圍，可改採解法一。
+
+Stats、Rectangle、iStatsMenus 等主流工具列應用皆基於相同理由要求完整取用磁碟權限。
 
 ### 系統需求
 
