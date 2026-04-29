@@ -9,7 +9,7 @@ struct OnboardingScanResultsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("找到 \(projects.count) 個專案")
+                Text(L.onboardingFoundCount(projects.count))
                     .font(.headline)
                 Spacer()
             }
@@ -20,9 +20,9 @@ struct OnboardingScanResultsView: View {
                     Image(systemName: "questionmark.folder")
                         .font(.largeTitle)
                         .foregroundStyle(.secondary)
-                    Text("沒有找到符合的專案")
+                    Text(L.onboardingNoMatches)
                         .foregroundStyle(.secondary)
-                    Text("可手動加路徑（v0.2 將支援），或退出 onboarding。")
+                    Text(L.onboardingNoMatchesHint)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -74,7 +74,7 @@ struct OnboardingScanResultsView: View {
             Divider()
             HStack {
                 Spacer()
-                Button("完成", action: onComplete)
+                Button(L.onboardingFinishButton, action: onComplete)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .disabled(selectedDirs.isEmpty)

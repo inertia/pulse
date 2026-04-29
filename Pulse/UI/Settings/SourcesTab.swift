@@ -11,8 +11,8 @@ struct SourcesTab: View {
             HStack {
                 Text("Sources").font(.headline)
                 Spacer()
-                Button("+ 加 markdown source") { addMarkdownSource() }
-                Button("+ 加 git source") { addGitSource() }
+                Button(L.settingsAddMarkdownSource) { addMarkdownSource() }
+                Button(L.settingsAddGitSource) { addGitSource() }
             }
             .padding()
 
@@ -21,7 +21,7 @@ struct SourcesTab: View {
                     Image(systemName: "tray")
                         .font(.largeTitle)
                         .foregroundStyle(.secondary)
-                    Text("尚未設定任何 source")
+                    Text(L.emptyNoSources)
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

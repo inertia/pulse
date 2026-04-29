@@ -48,7 +48,7 @@ struct OnboardingView: View {
         case .scanning:
             VStack(spacing: 12) {
                 ProgressView()
-                Text("掃描中…")
+                Text(L.onboardingScanning)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

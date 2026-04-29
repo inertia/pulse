@@ -7,7 +7,7 @@ struct LoadingPlaceholderView: View {
         VStack(spacing: 12) {
             ProgressView()
                 .controlSize(.regular)
-            Text("掃描中 \(progress.done) / \(progress.total) 專案")
+            Text(L.loadingProgress(done: progress.done, total: progress.total))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

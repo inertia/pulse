@@ -9,25 +9,25 @@ struct OnboardingWelcomeView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(.tint)
 
-            Text("歡迎使用 Pulse")
+            Text(L.onboardingWelcome)
                 .font(.title)
                 .fontWeight(.semibold)
 
-            Text("跨專案 todo / done 自動 monitor。")
+            Text(L.onboardingTagline)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
             Spacer().frame(height: 8)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("我會掃以下路徑（含一層子目錄）找含 CLAUDE.md / AGENTS.md / GEMINI.md 的目錄：")
+                Text(L.onboardingScanIntro)
                     .font(.caption)
                 ForEach(["~/Desktop", "~/Projects", "~/code", "~/Developer", "~/Documents"], id: \.self) { path in
                     Text(path)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                 }
-                Text("跳過 node_modules / .git / dist / build 等")
+                Text(L.onboardingScanSkips)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -37,7 +37,7 @@ struct OnboardingWelcomeView: View {
             Spacer()
 
             Button(action: onStartScan) {
-                Text("開始掃描")
+                Text(L.onboardingStartButton)
                     .frame(minWidth: 140)
             }
             .buttonStyle(.borderedProminent)

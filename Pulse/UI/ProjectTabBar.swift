@@ -31,7 +31,7 @@ struct ProjectTabBar: View {
             HStack(spacing: 4) {
                 Image(systemName: "square.grid.2x2.fill")
                     .font(.system(size: 9, weight: .medium))
-                Text("總覽")
+                Text(L.overviewLabel)
                     .font(.system(.caption, weight: isActive ? .semibold : .medium))
                 Text("\(overviewBadgeCount)")
                     .font(.caption2)

@@ -8,14 +8,14 @@ struct EmptyStateView: View {
             Image(systemName: "tray")
                 .font(.system(size: 36))
                 .foregroundStyle(.secondary)
-            Text("尚未設定任何 source")
+            Text(L.emptyNoSources)
                 .font(.headline)
-            Text("打開設定加入 CLAUDE.md / AGENTS.md / GEMINI.md 或 git 倉庫路徑。")
+            Text(L.emptyNoSourcesHint)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
-            Button("打開設定") { onSettingsTap() }
+            Button(L.emptyOpenSettings) { onSettingsTap() }
                 .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

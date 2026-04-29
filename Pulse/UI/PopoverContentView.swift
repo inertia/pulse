@@ -129,7 +129,7 @@ struct PopoverContentView: View {
                     let dones = group.cards.filter { $0.status == .done }
 
                     if todos.isEmpty {
-                        Text("沒有待辦")
+                        Text(L.emptyNoTodos)
                             .font(.callout)
                             .foregroundStyle(.tertiary)
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -150,7 +150,7 @@ struct PopoverContentView: View {
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                     .rotationEffect(.degrees(showDone ? 90 : 0))
-                                Text("已完成 (\(dones.count))")
+                                Text(L.doneDisclosure(dones.count))
                                     .font(.system(.caption, weight: .medium))
                                     .foregroundStyle(.secondary)
                                 Spacer(minLength: 0)

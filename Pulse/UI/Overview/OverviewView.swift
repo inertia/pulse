@@ -45,7 +45,7 @@ struct OverviewView: View {
 
                 if !urgentCards.isEmpty {
                     OverviewSection(
-                        title: "🔴 URGENT outstanding",
+                        title: L.overviewUrgent,
                         accent: Brand.amber,
                         count: urgentCards.count
                     ) {
@@ -57,7 +57,7 @@ struct OverviewView: View {
 
                 if !highCards.isEmpty {
                     OverviewSection(
-                        title: "🟡 HIGH outstanding",
+                        title: L.overviewHigh,
                         accent: Brand.amberDeep,
                         count: highCards.count
                     ) {
@@ -69,7 +69,7 @@ struct OverviewView: View {
 
                 if !last24h.isEmpty {
                     OverviewSection(
-                        title: "完成 last 24h",
+                        title: L.overviewLast24h,
                         accent: .secondary,
                         count: last24h.count
                     ) {
@@ -81,7 +81,7 @@ struct OverviewView: View {
 
                 if !last7dExcluding24h.isEmpty {
                     OverviewSection(
-                        title: "完成 last 7d",
+                        title: L.overviewLast7d,
                         accent: .secondary,
                         count: last7dExcluding24h.count,
                         collapsible: true,
@@ -94,7 +94,7 @@ struct OverviewView: View {
                 }
 
                 if isAllEmpty {
-                    Text("沒有 outstanding 也沒有最近完成。")
+                    Text(L.overviewEmpty)
                         .font(.callout)
                         .foregroundStyle(.tertiary)
                         .frame(maxWidth: .infinity, alignment: .center)

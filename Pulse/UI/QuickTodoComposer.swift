@@ -29,7 +29,7 @@ struct QuickTodoComposer: View {
                 HStack(spacing: 6) {
                     Image(systemName: "plus.circle.fill")
                         .foregroundStyle(Color.accentColor)
-                    TextField("快速記一個 todo…", text: $draft)
+                    TextField(L.quickFieldPlaceholder, text: $draft)
                         .textFieldStyle(.plain)
                         .focused($focused)
                         .onSubmit { commit() }
@@ -41,7 +41,7 @@ struct QuickTodoComposer: View {
                 }
                 HStack(spacing: 6) {
                     Picker("", selection: $targetLabel) {
-                        Text("📝 只記在 Pulse").tag("")
+                        Text(L.quickPulseOnly).tag("")
                         ForEach(projects) { p in
                             Text("→ \(p.label) (PULSE_QUICK.md)").tag(p.label)
                         }
@@ -51,7 +51,7 @@ struct QuickTodoComposer: View {
                     .controlSize(.small)
                     Spacer()
                     Button(action: commit) {
-                        Text(targetLabel.isEmpty ? "加" : "寫進專案")
+                        Text(targetLabel.isEmpty ? L.quickAddButton : L.quickWriteToProject)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
@@ -71,7 +71,7 @@ struct QuickTodoComposer: View {
                 HStack(spacing: 6) {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .semibold))
-                    Text("快速記")
+                    Text(L.quickHeader)
                         .font(.system(.caption, weight: .medium))
                 }
                 .padding(.horizontal, 10)
@@ -99,7 +99,7 @@ struct QuickTodoComposer: View {
                 onProjectWrite(url)
             } catch {
                 // Fallback: store in Pulse-only on failure so user doesn't lose the todo.
-                store.add(title: "[寫檔失敗] \(value)")
+                store.add(title: L.quickWriteFailed(value))
             }
         }
 

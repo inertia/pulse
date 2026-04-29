@@ -27,7 +27,10 @@ struct QuickTodo: Identifiable, Codable, Equatable {
 /// Unlike auto-ingested sources, Quick is not in `sources.json`; the popover
 /// composes a virtual ProjectGroup from QuickTodoStore.todos.
 enum QuickTodoConstants {
-    static let label = "📝 快速記"
+    /// Display label for Pulse's virtual quick-todo project. Bilingual via L.
+    /// `sourceId` stays the same across builds, so cache keyed on UUID
+    /// remains consistent if the user switches builds.
+    static var label: String { L.quickProjectLabel }
     /// Deterministic UUID so card sourceId stays stable across launches.
     static let sourceId = UUID(uuidString: "00000000-0000-0000-0000-00000000ABCD")!
 }

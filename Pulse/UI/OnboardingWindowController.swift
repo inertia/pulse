@@ -14,7 +14,7 @@ final class OnboardingWindowController: NSWindowController {
         let hosting = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hosting)
         window.styleMask = [.titled, .closable]
-        window.title = "Pulse · 設定"
+        window.title = L.pulseSettingsWindow
         window.setContentSize(NSSize(width: 520, height: 520))
         window.center()
         window.isReleasedWhenClosed = false

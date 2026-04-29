@@ -21,7 +21,7 @@ struct ProjectGroupView: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
                         .font(.caption)
-                    Text("來源遺失")
+                    Text(L.sourceMissing)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
