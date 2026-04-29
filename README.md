@@ -141,10 +141,112 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-## 中文說明（簡述）
+## 中文說明
 
-Pulse 是一個 macOS 工具列應用，用來跨專案匯總待辦與最近完成的工作。為使用 Claude Code / Codex / Cursor / Gemini CLI 等 AI 程式助手、且需要在多個 repo 之間切換的開發者打造。Pulse 唯讀讀取每個專案的 `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `pulse.md` checkbox 跟 `git log` conventional commits，在工具列彈出視窗顯示成「待辦」與「已完成」卡片。
+Pulse 是一款 macOS 工具列應用程式（menubar app），用於將使用者各個專案中的待辦事項與近期完成項目匯整於單一下拉視窗中，免去逐一切換資料夾以掌握進度的不便。
 
-從 [GitHub Releases](https://github.com/inertia/pulse/releases) 下載 dmg，拖到 Applications。首次啟動會掃描 `~/Desktop` 等常見開發資料夾，讓你勾選要追蹤的專案。常駐工具列無 dock icon。
+本應用程式專為以下使用情境設計：
 
-需要 macOS 14（Sonoma）以上。MIT 授權。
+- 平日使用 Claude Code、Codex、Cursor、Gemini CLI 等 AI 助手協同寫作或研究的工作者
+- 同時進行多個專案，需要在工具列即時掌握各專案進度者
+- **未必熟悉程式碼，但經常透過 AI 助手執行研究與寫作的學者**（詳見下方「研究者適用之核心功能」）
+
+### Pulse 讀取的資料來源
+
+Pulse 採**唯讀**方式存取下列檔案，不會回寫任何內容（`pulse.md` 之「快速記」功能屬例外，後段另行說明）：
+
+- `CLAUDE.md`：Claude Code 使用的待辦 checkbox（`- [ ] 任務內容`）
+- `AGENTS.md`：Codex 與 Cursor 使用的待辦 checkbox
+- `GEMINI.md`：Gemini CLI 使用的待辦 checkbox
+- `pulse.md`：Pulse 自身的命名慣例，供 AI 助手自動寫入
+- `git log`：近 30 日的 commit 紀錄，並自動篩選 `feat:`、`fix:`、`chore:` 等規範化 commit
+
+待辦標題若以 🔴 開頭，或其所屬章節標題包含 🔴（例如 `### 🔴 URGENT / P0`），將自動歸類於 URGENT 區段；🟡 同理歸入 HIGH 區段。不需任何手動分類設定。
+
+### 研究者適用之核心功能：以自然語言指示 AI，待辦自動納入 Pulse
+
+Pulse 首次掃描到專案時，會於該專案之 `CLAUDE.md` 寫入一段「鉤子」（hook block），使 Claude Code 等 AI 助手能識別下列觸發語：
+
+| 對 AI 之指示 | AI 自動執行之動作 |
+|---|---|
+| 「加 todo X」、「記下來」、「不要忘記 X」、「TODO: X」 | 於 `<專案>/pulse.md` 的 `## To Do` 段附加 `- [ ] (當日日期) X` |
+| 「優先處理 X」、「要先做 X」、「P0」、「緊急」 | 附加 `- [ ] 🔴 (當日日期) X`，並自動歸入 Pulse 的 URGENT 區段 |
+| 「高優先 X」、「重要的 X」 | 附加 `- [ ] 🟡 (當日日期) X`，並自動歸入 HIGH 區段 |
+| 「X 完成了」、「X 做完了」、「done X」、「finished X」 | 將對應之 `- [ ]` 標記為 `- [x] (done 當日日期) X` |
+| 「刪掉 X」、「不要這條 X」、「拿掉 X」、「remove X」 | 移除整行 |
+
+此項功能對於撰寫論文、進行田野工作、整理訪談稿之研究者尤具實效：日常與 AI 對話過程中所提及之指示（例如「優先處理博士論文之引用考據」、「該篇訪談稿已完成校對」），其內容將自動進入 Pulse 之待辦清單，無需熟悉 markdown checkbox 語法，亦無需手動編輯任何檔案。
+
+開啟 Pulse 工具列即可於單一視窗中跨專案綜覽所有「曾向 AI 提出之待辦」。
+
+### 安裝
+
+Pulse 並未簽署 Apple 開發者憑證（年費 99 美元，免費開源工具不負擔此項支出）。安裝方式有以下兩種，擇一即可。
+
+**方式 A：下載 dmg**（操作簡便，惟首次開啟須以右鍵啟用）
+
+1. 自 [GitHub Releases](https://github.com/inertia/pulse/releases) 頁面下載 `Pulse-x.y.z.dmg`
+2. 掛載 dmg，將 `Pulse.app` 拖移至 `/Applications`
+3. **首次開啟**：於 `/Applications` 中找到 Pulse.app，**按右鍵 → 打開**，於對話框中再次點選「打開」。後續啟動將不再出現提示
+
+若已直接雙擊並出現「無法驗證開發者」警告，可於終端機輸入下列指令清除警告標記：
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Pulse.app
+```
+
+**方式 B：自原始碼編譯**（需 Xcode 命令列工具與 Homebrew）
+
+```bash
+brew install xcodegen
+git clone https://github.com/inertia/pulse.git
+cd pulse
+./Scripts/build-and-install.sh
+```
+
+腳本將自動產生 Xcode 專案、編譯、複製至 `/Applications` 並啟動。首次執行約需 30 至 60 秒。
+
+### 首次啟動
+
+Pulse 將請求 `~/Desktop`、`~/Projects`、`~/code`、`~/Developer`、`~/Documents` 等常見開發資料夾之讀取權限，並於子目錄一層內搜尋包含 `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` 之專案，呈現清單供使用者勾選欲追蹤之項目。
+
+完成後 Pulse 常駐於工具列（不佔用 Dock 圖示）。如欲設定開機自動啟動，可於系統設定 → 一般 → 登入項目中新增。
+
+### 日常操作
+
+- **點擊工具列之 amber 脈搏圖示** 即可展開 popover
+- **總覽分頁**（最左側，預設選取）：跨專案 digest，包含 URGENT 待辦、HIGH 待辦、近 24 小時完成項、近 7 日完成項
+- **各專案分頁**：切換以查看單一專案之詳細卡片
+- **快速記 `+` 按鈕**（popover 下方）：可記錄一條待辦事項；可選擇僅保存於 Pulse 內部，或寫入某專案之 `pulse.md`，供 AI 助手於下次 session 載入時讀取
+- 點擊 popover 範圍以外之任何位置，或按 `⌘W`，皆可關閉視窗
+
+### 鍵盤快速鍵
+
+| 快速鍵 | 對應動作 |
+|---|---|
+| `⌘,` | 開啟設定面板（管理 sources、過濾規則、重新掃描 Desktop） |
+| `⌘R` | 立即更新所有 source |
+| `⌘Q` | 結束 Pulse |
+| `⌘W` | 收合 popover |
+
+### 隱私與唯讀契約
+
+Pulse **不會修改**所追蹤之 `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` 或任何 `.git` 目錄內之檔案。唯一例外為 `pulse.md`：使用「快速記」並指定某專案時，Pulse 將於該專案之 `pulse.md` 結尾附加一行待辦（檔案若不存在則自動建立）；AI 助手經由 hook 觸發語寫入 `pulse.md` 亦循此路徑。
+
+Pulse 不上傳任何資料至雲端，無 telemetry 蒐集機制，亦不需網路連線。
+
+如欲驗證唯讀契約，可執行 `./Scripts/verify-readonly.sh`（需事先以 `brew install jq` 安裝相依套件）。
+
+### 系統需求
+
+- macOS 14（Sonoma）或更新版本
+- Apple Silicon 與 Intel 處理器皆支援
+- 約 30 MB 硬碟空間，數 MB 記憶體
+
+### 反饋與貢獻
+
+Bug 回報、功能建議、實作構想，歡迎於 [github.com/inertia/pulse/issues](https://github.com/inertia/pulse/issues) 提交 issue。較具規模之變更，建議先開立 issue 討論方向，再行送出 pull request。
+
+### 授權
+
+採 MIT 授權，詳見 [LICENSE](LICENSE)。
