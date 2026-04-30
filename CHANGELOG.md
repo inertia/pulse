@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## v0.5.0：自簽 cert 解決 TCC 反覆問題 (2026-04-30)
+
+### Breaking-ish — existing user 升級時要做一次
+
+**簽章模型從 ad-hoc 改自簽 cert**。原本 ad-hoc 簽章下，Pulse binary 沒穩定身份，每次 rebuild cdhash 都變，macOS TCC 把舊 Full Disk Access 授權內部作廢，UI 顯示「已開」但實際 prompt 仍跳出來——造成 user 反覆被「Pulse 想存取 ~/Desktop」對話框騷擾。
+
+新模型：build infrastructure 用 user-local self-signed code-signing cert 簽。所有 build 共用同一張 cert，TCC Designated Requirement 從「綁 cdhash（每次 rebuild 變）」變「綁 certificate leaf hash（cert 不變則永遠不變）」。FDA 授權跨 rebuild 永久有效。
+
+**升級步驟**：
+
+```bash
+./Scripts/setup-signing-cert.sh   # 一次性，把 self-signed cert 生進 login keychain
+./Scripts/build-and-install.sh    # 用新 cert 重 build + 重裝
+# 然後 System Settings → Privacy & Security → Full Disk Access：
+# 把舊的 Pulse / Pulse Internal entry 刪掉，重新加 + toggle 開
+```
+
+之後不論 rebuild 幾次，FDA 都不會失效。詳情看 README §"Code signing & TCC permissions"。
+
+### 修正
+
+- **`RefreshScheduler.installWatchers()` 改成增量式**：原本每次 `forceRefresh()` 結束都 teardown + recreate 全部 9 個 FSEvent watcher，變相每小時 backstop timer 觸發一次大規模重建。改成「只 stop 消失的 source 對應 watcher、只 install 新增的 source」，refresh 之間 watcher 不動。減少 TCC prompt 額外觸發路徑（簽章 fix 之上的補強）。
+- **CLAUDE.md hook 完成規則改寫**：原本叫 Claude 把完成的 `- [ ]` 改成 `- [x] (done YYYY-MM-DD)`，但 code 任務 commit 後已經被 git source 收進 Pulse「完成 last 24h / 7d」——tick 等於雙重顯示。新規則依任務性質區分：code 任務 → 整行刪除（commit log 涵蓋）；非 code 任務（讀書、回信、訂閱續約等沒 commit 對應）→ tick。
+
+### Build infrastructure
+
+- `Scripts/setup-signing-cert.sh` 新增。openssl 3.x 預設 PKCS#12 加密 macOS Security 不認，改用 -legacy mode + simple tmpdir paths 解；`-A` flag 預先授權任何 app 用該 key（避免 build 時跳 keychain 對話框）。
+- `xcconfig/Shared.xcconfig`：加 `CODE_SIGN_IDENTITY = Pulse Personal Code Signing` + `CODE_SIGN_STYLE = Manual`；`MARKETING_VERSION` bump 0.2.0 → 0.5.0（之前對齊 CHANGELOG 的 drift 一併補上）。
+- `project.yml`：`ENABLE_HARDENED_RUNTIME: YES → NO`。Self-signed cert 的 `TeamIdentifier=not set` 跟 hardened runtime 的 dylib Team ID match 要求衝突，會讓 Debug build test bootstrap fail。實質沒損失保護——前面 ad-hoc 簽章時 Xcode 也是自動關 hardened runtime。
+- `Scripts/build-and-install.sh` + `build-dmg.sh`：拿掉 `CODE_SIGN_IDENTITY=""` 三條 ad-hoc 強制 override。
+
+### 內部清理
+
+- 刪除 `Pulse/UI/ProjectGroupView.swift` + `PulseTests/UI/ProjectGroupViewTests.swift`：dead code，codebase 沒任何引用。Xcode 自己 build log 也回報該 .o 是 stale file。`ProjectGroup` model（獨立檔）保留，廣泛使用中。
+
+191/191 tests green。
+
+---
+
 ## v0.4.1：Settings 開啟 + popover click-outside dismiss 修整 (2026-04-29)
 
 ### 修正
