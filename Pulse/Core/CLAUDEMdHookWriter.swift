@@ -38,17 +38,19 @@ enum CLAUDEMdHookWriter {
 
         寫完一句確認：「已記 pulse.md：[xxx]」
 
-        **完成 / 刪除規則**：user 講以下類型語句時，更新 pulse.md `## To Do` 對應行：
+        **完成規則（依任務性質區分，避免跟 git commit 雙重顯示）**：user 講「X 完成」/「X 做完了」/「X 結了」/「done X」/「finished X」等完成觸發時，按 TODO 性質擇一處理：
 
-        完成觸發：「X 完成」/「X 做完了」/「X 結了」/「done X」/「finished X」
-        → 找到對應 `- [ ]` 行，改成 `- [x] (done YYYY-MM-DD)` + 原內容
+        - **code 任務（會產生 git commit 的）→ 整行刪除**：commit log 已涵蓋完成史，pulse.md 再留 `- [x]` tick 會跟 git source 雙重出現在 Pulse「完成 last 24h / last 7d」造成重複。
+          - 寫完一句確認：「已刪除（commit 涵蓋）：[xxx]」
 
-        刪除觸發：「幫我刪掉 X」/「不要這條 X」/「拿掉 X」/「remove X」/「drop X」
+        - **非 code 任務（沒 commit 對應的，例如：讀書、回信、訂閱續約、看會議、現實世界事件、決策確認）→ 改成 `- [x] (done YYYY-MM-DD)` + 原內容**：commit log 不會記這類事，tick 是唯一紀錄；30 天後 Pulse 會自動清掉那行。
+          - 寫完一句確認：「已標完成：[xxx]」
+
+        判斷不確定時（例如該完成可能跨多個 commit、或包含 code + 非 code 混合）**先問 user**，不要預設行為。
+
+        **刪除觸發**（user 主動要清掉，不論性質）：「幫我刪掉 X」/「不要這條 X」/「拿掉 X」/「remove X」/「drop X」
         → 找到對應 `- [ ]` 或 `- [x]` 行，整行 remove
-
-        寫完一句確認：「已標完成：[xxx]」或「已刪除：[xxx]」
-
-        **注意**：完成 30 天後 Pulse 會自動清掉那行（commit log 已涵蓋歷史）。
+        → 寫完一句確認：「已刪除：[xxx]」
 
         **不要寫**：
         - 已完成（git commit log 涵蓋）
