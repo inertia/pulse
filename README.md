@@ -143,32 +143,32 @@ You can verify the read-only contract by running `./Scripts/verify-readonly.sh` 
 
 Pulse does not phone home, does not collect telemetry, and does not require a network connection.
 
-## Troubleshooting: "Pulse keeps asking for Desktop access every few minutes"
+## Code signing & TCC permissions
 
-This happens because Pulse is ad-hoc signed (no Apple Developer ID, since this project deliberately avoids the $99/year fee). macOS treats per-folder access grants (`~/Desktop`, `~/Documents`, etc.) as conditional on a stable code signature; ad-hoc rebuilds and certain refresh patterns can cause the system to re-prompt.
+Pulse signs its binary with a **self-signed code-signing certificate** generated locally on your machine, not Apple Developer ID (this project deliberately avoids the $99/year fee). The cert is created once via `Scripts/setup-signing-cert.sh` and lives in your login keychain.
 
-Two fixes — pick one.
+This matters because macOS TCC (the system that gates `~/Desktop` / `~/Documents` / Full Disk Access) keys its grants on the binary's **Designated Requirement** — derived from the code signature. With a stable self-signed cert, the DR is the same across rebuilds, so any TCC permission you grant Pulse persists. With ad-hoc signing (which is what `Scripts/build-and-install.sh` did before v0.2.x), the DR changed every rebuild and macOS would silently invalidate prior grants — leading to the infamous "Pulse keeps asking for Desktop access" loop.
 
-**Option 1: reset the grant and don't rebuild**
+### First-time setup
 
 ```bash
-tccutil reset SystemPolicyDesktopFolder com.huangsunquan.pulse
+./Scripts/setup-signing-cert.sh         # one-time, ~5 sec
+./Scripts/build-and-install.sh          # public build → /Applications/Pulse.app
+# or
+./Scripts/build-and-install.sh internal # personal build → /Applications/Pulse Internal.app
 ```
 
-Restart Pulse from `/Applications`, click *OK* on the prompt that appears. The permission is sticky for the lifetime of that binary. If you later rebuild from source the prompt may return on first launch — accept once and it sticks again.
+Then open *System Settings → Privacy & Security → Full Disk Access*, click `+`, add `/Applications/Pulse.app` (or both `Pulse.app` and `Pulse Internal.app` if you build both), and enable the toggle. The grant survives subsequent rebuilds because the cert (and therefore the DR) doesn't change.
 
-**Option 2: grant Full Disk Access (recommended)**
+### Trade-offs
 
-This bypasses per-folder TCC entirely.
+- **Gatekeeper first launch**: self-signed apps still trigger macOS's "unidentified developer" warning the first time you open them. Right-click → *Open* once; subsequent launches are silent.
+- **Full Disk Access scope**: Pulse can technically read any file on disk. The codebase is open source — you can verify (`./Scripts/verify-readonly.sh`) that it only reads markdown checkboxes and `git log` output and never writes outside `pulse.md`.
+- **Distribution to others**: self-signed apps are trusted only on the machine that generated the cert. If you want to share Pulse with someone else, they'd need to either run `setup-signing-cert.sh` themselves and rebuild, or you'd need to switch to Apple Developer ID notarization.
 
-1. Open *System Settings → Privacy & Security → Full Disk Access*
-2. Click `+`, browse to `/Applications/Pulse.app`, add it
-3. Enable the toggle next to its row
-4. Quit and relaunch Pulse
+### "I rebuilt and the TCC prompt came back"
 
-The grant is sticky regardless of code signature changes, so you'll never see the prompt again. The trade-off: Pulse can technically read any file on disk. Pulse is open source — you can verify it only reads markdown checkboxes and `git log` — but if that scope is not acceptable, stick with Option 1.
-
-Most other menubar developer tools (Stats, Rectangle, iStatsMenus) ask for Full Disk Access for the same reason.
+That shouldn't happen with a stable cert. If it does, the cert was likely regenerated (e.g., you ran `setup-signing-cert.sh` after `delete-certificate`, or moved to a new machine). Check that `security find-identity -p codesigning login.keychain | grep "Pulse Personal Code Signing"` returns the same SHA-1 fingerprint as before; if it's different, you'll need to re-grant FDA once with the new cert.
 
 ## System requirements
 

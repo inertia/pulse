@@ -46,12 +46,12 @@ echo "→ Generating Xcode project from project.yml…"
 xcodegen generate >/dev/null
 
 echo "→ Building $CONFIG (this takes ~30-60s on first run, faster on rebuild)…"
+# Sign with the self-signed cert provisioned by Scripts/setup-signing-cert.sh
+# (CODE_SIGN_IDENTITY is set in xcconfig/Shared.xcconfig). Stable signing keeps
+# macOS TCC FDA grants persistent across rebuilds.
 xcodebuild -project Pulse.xcodeproj -scheme Pulse \
   -configuration "$CONFIG" \
   -destination 'platform=macOS' \
-  CODE_SIGN_IDENTITY="" \
-  CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGNING_ALLOWED=NO \
   build >/tmp/pulse-build.log 2>&1 || {
     echo "Build failed. Last 20 lines of log:" >&2
     tail -20 /tmp/pulse-build.log >&2

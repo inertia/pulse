@@ -20,13 +20,11 @@ build_one() {
   rm -rf "build/staging-${kind}"
   mkdir -p "build/staging-${kind}"
 
+  # Sign with self-signed cert from xcconfig (see setup-signing-cert.sh).
   xcodebuild -project Pulse.xcodeproj -scheme Pulse \
     -configuration "$config" \
     -derivedDataPath "build/dd-${kind}" \
     -destination 'platform=macOS' \
-    CODE_SIGN_IDENTITY="" \
-    CODE_SIGNING_REQUIRED=NO \
-    CODE_SIGNING_ALLOWED=NO \
     clean build
 
   cp -R "build/dd-${kind}/Build/Products/${config}/"*.app "build/staging-${kind}/"

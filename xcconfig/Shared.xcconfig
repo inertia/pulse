@@ -6,3 +6,10 @@ GENERATE_INFOPLIST_FILE = YES
 MARKETING_VERSION = 0.2.0
 CURRENT_PROJECT_VERSION = 1
 INFOPLIST_KEY_NSDesktopFolderUsageDescription = Pulse 讀取你 Desktop 中的 CLAUDE.md / AGENTS.md / GEMINI.md 跟 git 紀錄，呈現跨專案 todo 與已完成。只讀，不寫回。
+
+// Self-signed code signing — keeps macOS TCC's Designated Requirement stable
+// across rebuilds (FDA grants survive). Requires running
+// `Scripts/setup-signing-cert.sh` once to provision the cert into login keychain.
+// See README §Signing for rationale.
+CODE_SIGN_IDENTITY = Pulse Personal Code Signing
+CODE_SIGN_STYLE = Manual
