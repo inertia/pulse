@@ -105,10 +105,21 @@ final class RefreshScheduler: ObservableObject {
     ///   HEAD). If the file doesn't exist (uncommitted repo) the watcher is
     ///   created against the parent dir anyway and will fire when the file
     ///   first appears.
+    /// Incremental: tear down only watchers whose source disappeared, install
+    /// only watchers for newly-added sources. Existing FSEventStreams are left
+    /// intact across refreshes — important under ad-hoc signing where
+    /// recreating streams on `~/Desktop` subdirectories can re-trigger TCC
+    /// permission prompts.
     private func installWatchers() {
-        teardownWatchers()
         let sources = sourceStore.load().filter { $0.enabled }
-        for source in sources {
+        let currentIds = Set(sources.map { $0.id })
+
+        for removedId in Set(watchers.keys).subtracting(currentIds) {
+            watchers[removedId]?.stop()
+            watchers.removeValue(forKey: removedId)
+        }
+
+        for source in sources where watchers[source.id] == nil {
             let watchURL: URL
             switch source.kind {
             case .claudeMd, .agentsMd, .geminiMd:
