@@ -22,7 +22,7 @@ targets:
     settings:
       base:
         ENABLE_PREVIEWS: YES
-        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_HARDENED_RUNTIME: NO
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_NSHighResolutionCapable: YES
