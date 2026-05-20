@@ -5,8 +5,15 @@ import Foundation
 /// commits pattern AND whose type is in `enabledTypes` are emitted.
 /// Non-conformant lines are silently dropped.
 enum ConventionalCommitsParser {
+    // 三類前綴：
+    // (1) 標準 conventional commit 十種
+    // (2) 黃孫權日常研究工序 type：daily 報、papers 入庫、audit、skill 沉澱、pulse todo 同步等
+    // (3) 中文 repo 前綴：commit subject 以專案名直接開頭時的慣例
+    // 分隔符放寬，type 後三種寫法皆認：
+    //   (a) 冒號（半形 `:` 或全形 `：`），冒號後可帶 0+ 空白：`feat: x`、`feat:x`、`矽盾：archive`
+    //   (b) 純空白（無冒號）：`daily 5/20 B 區：…`、`add 045 期日報 …`、`中國技術道路 2026-05-20 日報`
     private static let pattern =
-        #"^(feat|fix|refactor|perf|chore|docs|build|ci|style|test)(?:\([^)]*\))?:\s+(.+)$"#
+        #"^(feat|fix|refactor|perf|chore|docs|build|ci|style|test|daily|papers|pulse|skill|audit|add|wip|revert|矽盾週報|矽盾|新大眾文藝|中國技術道路|破週報|文化與技術三部曲)(?:\([^)]*\))?(?:[:：]\s*|\s+)(.+)$"#
 
     /// Parse raw `git log` output into cards. Each conventional commit becomes
     /// a `.done` Card whose `id` is the commit SHA (already content-addressable).
