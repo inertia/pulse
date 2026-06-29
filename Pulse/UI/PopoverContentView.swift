@@ -125,7 +125,7 @@ struct PopoverContentView: View {
         } else if let group = selectedGroup {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 6) {
                         let todos = group.cards.filter { $0.status == .todo }
                         let dones = group.cards.filter { $0.status == .done }
 

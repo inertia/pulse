@@ -49,20 +49,24 @@ echo "â†’ Building $CONFIG (this takes ~30-60s on first run, faster on rebuild)â
 # Sign with the self-signed cert provisioned by Scripts/setup-signing-cert.sh
 # (CODE_SIGN_IDENTITY is set in xcconfig/Shared.xcconfig). Stable signing keeps
 # macOS TCC FDA grants persistent across rebuilds.
+#
+# Use a throwaway DerivedData under /tmp instead of the user-wide
+# ~/Library/Developer/Xcode/DerivedData/. Otherwise the built Pulse.app sits
+# there permanently and Spotlight indexes it, polluting Launchpad / app search.
+DERIVED_DATA=$(mktemp -d /tmp/pulse-install-dd.XXXXXX)
+trap 'rm -rf "$DERIVED_DATA"' EXIT
+
 xcodebuild -project Pulse.xcodeproj -scheme Pulse \
   -configuration "$CONFIG" \
   -destination 'platform=macOS' \
+  -derivedDataPath "$DERIVED_DATA" \
   build >/tmp/pulse-build.log 2>&1 || {
     echo "Build failed. Last 20 lines of log:" >&2
     tail -20 /tmp/pulse-build.log >&2
     exit 1
   }
 
-APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData \
-  -name "${APP_NAME}.app" \
-  -path "*${CONFIG}*" \
-  -not -path "*Index.noindex*" \
-  | head -1)
+APP_PATH="$DERIVED_DATA/Build/Products/${CONFIG}/${APP_NAME}.app"
 
 if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
   echo "Built app not found in DerivedData (looked for ${APP_NAME}.app under ${CONFIG})" >&2

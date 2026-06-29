@@ -41,7 +41,7 @@ struct OverviewView: View {
 
         return ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 14) {
                     DigestLineView(summary: summary)
 
                     if !urgentCards.isEmpty {

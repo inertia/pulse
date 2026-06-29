@@ -43,3 +43,8 @@ case "$BUILD_KIND" in
   both)     build_one public; build_one internal ;;
   *) echo "Unknown kind: $BUILD_KIND"; exit 1 ;;
 esac
+
+# Clean all xcodebuild leftovers in build/ — keep only *.dmg.
+# Otherwise build/dd-{kind}/ (~200MB each) + build/staging-{kind}/Pulse.app
+# accumulate and Spotlight-index Pulse.app from staging/, polluting Launchpad.
+find build -mindepth 1 -maxdepth 1 ! -name "*.dmg" -exec rm -rf {} +
